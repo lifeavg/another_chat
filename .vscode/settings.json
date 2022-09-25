@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
+        "aioredis",
         "fastapi",
+        "keepalive",
         "pydantic",
         "starlette",
         "uvicorn",
