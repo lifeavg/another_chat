@@ -14,12 +14,12 @@ from .schemas import *
 default_json_encoder = JSONEncoder.default
 
 
-def custom_json_encoder(self, obj: Any):
+def custom_json_encoder(self, obj: Any) -> Any:
     if isinstance(obj, UUID):
         return str(obj)
     return default_json_encoder(self, obj)
 
-
+# https://github.com/jazzband/django-push-notifications/issues/586
 JSONEncoder.default = custom_json_encoder  # type: ignore
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -67,7 +67,7 @@ async def socket_connection(
         redis: Redis,
         user: User,
         pubsub: PubSub,
-        subscriptions: set[Chat]) -> str:
+        subscriptions: set[Chat]) -> None:
     while True:
         data = await receive_data(websocket)
         match data:
@@ -77,21 +77,24 @@ async def socket_connection(
                 await redis.publish(to_redis_key(data.receiver), json.dumps(asdict(data)))
                 break
             case Subscription():
-                new_subscriptions = set(data.chats) - subscriptions
-                if new_subscriptions:
-                    await pubsub.subscribe(*[to_redis_key(x) for x in new_subscriptions])
-                    subscriptions |= new_subscriptions
+                if data.subscribe:
+                    new_subscriptions = set(data.chats) - subscriptions
+                    if new_subscriptions:
+                        subscriptions |= new_subscriptions
+                        await pubsub.subscribe(*[to_redis_key(x) for x in new_subscriptions])
+                else:
+                    subscriptions -= set(data.chats)
+                    await pubsub.unsubscribe(*[to_redis_key(x) for x in data.chats])
                 break
             case Confirmation():
                 break
             case _:
                 break
-    return 'socket_connection'
 
 
 async def redis_subscription(
         websocket: WebSocket,
-        pubsub: PubSub) -> str:
+        pubsub: PubSub) -> None:
     while True:
         raw_data = await pubsub.get_message(ignore_subscribe_messages=True)
         if raw_data:
@@ -102,7 +105,6 @@ async def redis_subscription(
                     break
                 case _:
                     break
-    return 'redis_subscription'
 
 
 @router.websocket("/ws")
@@ -114,18 +116,25 @@ async def chat_websocket(websocket: WebSocket):
     pubsub = redis.pubsub()
     subscriptions: set[Chat] = set(init_subscription.chats)
     await pubsub.subscribe(*[to_redis_key(x) for x in subscriptions])
-    pending = {asyncio.create_task(socket_connection(websocket, redis, init_subscription.user, pubsub, subscriptions)),
-               asyncio.create_task(redis_subscription(websocket, pubsub))}
+    pending = set()
+    pending.add(asyncio.create_task(
+        socket_connection(websocket, redis, init_subscription.user, pubsub, subscriptions),
+        name='socket_connection'))
+    pending.add(asyncio.create_task(
+        redis_subscription(websocket, pubsub),
+        name='redis_subscription'))
     while True:
         done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
-            result = await task
-            match result:
+            await task
+            match task.get_name():
                 case 'socket_connection':
-                    pending.add(asyncio.create_task(socket_connection(
-                        websocket, redis, init_subscription.user, pubsub, subscriptions)))
+                    pending.add(asyncio.create_task(
+                        socket_connection(websocket, redis, init_subscription.user, pubsub, subscriptions),
+                        name='socket_connection'))
                 case 'redis_subscription':
-                    pending.add(asyncio.create_task(redis_subscription(
-                        websocket, pubsub)))
+                    pending.add(asyncio.create_task(
+                        redis_subscription(websocket, pubsub),
+                        name='redis_subscription'))
                 case _:
                     break
