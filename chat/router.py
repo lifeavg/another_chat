@@ -5,7 +5,8 @@ from json import JSONEncoder
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from starlette.endpoints import WebSocketEndpoint
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect 
 from redis import asyncio as aioredis
 from redis.asyncio.client import PubSub, Redis
 
@@ -33,8 +34,8 @@ redis = aioredis.from_url(
     socket_keepalive=True)
 
 
-def from_json(json_data: dict) -> Message | Subscription | Confirmation | None:
-    types = [Message, Subscription, Confirmation]
+def from_json(json_data: dict) -> Message | Subscription | MessageConfirmation | None:
+    types = [Message, Subscription, MessageConfirmation]
     for t in types:
         try:
             return t(**json_data)
@@ -42,10 +43,11 @@ def from_json(json_data: dict) -> Message | Subscription | Confirmation | None:
             pass
 
 
-async def receive_data(websocket: WebSocket) -> Message | Subscription | Confirmation | None:
+async def receive_data(websocket: WebSocket) -> Message | Subscription | MessageConfirmation | None:
     raw_data = None
     try:
         raw_data = await websocket.receive_text()
+        # await websocket.receive_json()
     except WebSocketDisconnect as exception:
         pass
     json_data = None
@@ -86,10 +88,10 @@ async def socket_connection(
                     subscriptions -= set(data.chats)
                     await pubsub.unsubscribe(*[to_redis_key(x) for x in data.chats])
                 break
-            case Confirmation():
+            case MessageConfirmation():
                 break
             case _:
-                break
+                pass
 
 
 async def redis_subscription(
@@ -104,7 +106,7 @@ async def redis_subscription(
                     await websocket.send_text(raw_data['data'])
                     break
                 case _:
-                    break
+                    pass
 
 
 @router.websocket("/ws")
