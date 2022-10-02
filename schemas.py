@@ -38,6 +38,7 @@ class User:
                 f'Object of type {__o.__class__.__name__} can\'t be compared to Chat object')
         return self.uuid == __o.uuid
 
+
 @dataclass
 class Message:
     uuid: UUID | None
@@ -68,6 +69,7 @@ class UserStatus(Enum):
 class MessageConfirmation:
     uuid: UUID
     status: MessageStatus
+
 
 @dataclass
 class MessagesConfirmation:
