@@ -74,3 +74,21 @@ class MessageConfirmation:
 @dataclass
 class MessagesConfirmation:
     messages: list[MessageConfirmation]
+
+class UserType(Enum):
+    UNKNOWN = 'UNKNOWN'
+    USER = 'USER'
+    ADMIN = 'ADMIN'
+    MODERATOR = 'MODERATOR'
+
+class UserRole(Enum):
+    READER = 'READER'
+    POSTER = 'POSTER'
+    MODERATOR = 'MODERATOR'
+
+
+@dataclass
+class AccessUserPermissions:
+    user: User
+    user_type: UserType
+    chats: dict[Chat, UserRole]

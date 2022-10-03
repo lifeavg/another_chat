@@ -1,19 +1,19 @@
 import asyncio
 import json
 from dataclasses import asdict
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from redis.asyncio.client import PubSub, Redis
 from starlette import status
 from starlette.endpoints import WebSocketEndpoint
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
+from starlette.authentication import requires
 
 from connections import redis as global_redis
 from schemas import (Message, MessageConfirmation, Subscription, User,
-                     UserStatus)
+                     AccessUserPermissions, UserType, Chat, UserRole)
 from utils import from_json, to_redis_key
-
 
 async def process_message(message: Message, redis: Redis) -> None:
     await redis.publish(channel=to_redis_key(object=message.receiver), message=json.dumps(asdict(message)))
@@ -29,6 +29,9 @@ async def process_subscription(subscription: Subscription, pubsub: PubSub) -> No
     else:
         await pubsub.unsubscribe(*received_channels)
 
+# def authenticate(token: str) -> AccessUserPermissions | None:
+#     # return AccessUserPermissions(user=User(uuid=UUID('3b4827ad-32cc-49ef-9e8a-7abdfe196ef2'), name='userOne'), user_type=UserType.USER, chats={Chat(uuid=UUID('3a78e770-6789-4e4a-9286-73ee6cd283a6'), name='chatOne'):UserRole.POSTER, Chat(uuid=UUID('4ec6b6b5-f32f-4b01-80c9-80e51fdc65ee'), name='chatTwo'):UserRole.POSTER})
+#     return None
 
 class ChatEndpoint(WebSocketEndpoint):
     encoding = 'json'
@@ -41,21 +44,19 @@ class ChatEndpoint(WebSocketEndpoint):
         super().__init__(scope, receive, send)
         self.redis: Redis = redis
         self.pubsub: PubSub = self.redis.pubsub()
-        self.user: User | None = None
+        self.access: AccessUserPermissions | None = None
 
+    @requires('authenticated')
     async def on_connect(self, websocket: WebSocket) -> None:
+        print(websocket.user)
         await websocket.accept()
 
     async def on_receive(self, websocket: WebSocket, data: dict) -> None:
         o_data = from_json(data)
         match o_data:
             case Message():
-                await self._process_message(message=o_data)
+                await self._process_message(message=o_data, websocket=websocket)
             case Subscription():
-                # TODO authorization and authentication on_connect
-                if not self.user:
-                    self.user = o_data.user
-                    await self.redis.set(name=to_redis_key(object=self.user), value=str(UserStatus.ONLINE))
                 await process_subscription(subscription=o_data, pubsub=self.pubsub)
             case MessageConfirmation():
                 pass
@@ -104,9 +105,9 @@ class ChatEndpoint(WebSocketEndpoint):
             await self.on_receive(websocket=websocket, data=data)
         elif message['type'] == 'websocket.disconnect':
             return int(message.get("code") or status.WS_1000_NORMAL_CLOSURE)
-        else:
-            raise ValueError(
-                f'Unexpected value \'type \'={message["type"]} in websocket={websocket}')
+        # else:
+        #     raise ValueError(
+        #         f'Unexpected value \'type \'={message["type"]} in websocket={websocket}')
 
     async def _dispatch_pubsub(self, websocket: WebSocket, timeout: float = 0.0) -> None:
         if self.pubsub.subscribed:
@@ -125,10 +126,10 @@ class ChatEndpoint(WebSocketEndpoint):
                 raise TypeError(f'Unexpected data type {data.__class__.__name__}'
                                 'received from pubsub channel')
 
-    async def _process_message(self, message: Message) -> None:
-        if not self.user:
-            pass
-        message.sender = self.user
+    async def _process_message(self, message: Message, websocket: WebSocket) -> None:
+        if not self.access:
+            return None
+        message.sender = self.access.user
         message.uuid = uuid4()
         await process_message(message=message, redis=self.redis)
 
