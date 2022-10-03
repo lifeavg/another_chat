@@ -15,6 +15,12 @@ from schemas import (Message, MessageConfirmation, Subscription, User,
 from utils import from_json, to_redis_key
 
 
+class AccessError(Exception):
+    '''
+    Access for the user is not allowed
+    '''
+
+
 async def process_message(message: Message, redis: Redis) -> None:
     await redis.publish(channel=to_redis_key(object=message.receiver), message=json.dumps(asdict(message)))
 
@@ -60,8 +66,8 @@ class ChatEndpoint(WebSocketEndpoint):
             case MessageConfirmation():
                 pass
             case _:
-                # exception incorrect data received
-                pass
+                raise TypeError(f'Unexpected data type {o_data.__class__.__name__}'
+                                f'received from websocket {websocket}')
 
     # async def on_disconnect(self, websocket, close_code):
     #     pass
@@ -88,9 +94,16 @@ class ChatEndpoint(WebSocketEndpoint):
                     websocket=websocket)
                 if result:
                     break
-        except Exception as exc:
+        except ValueError as exception:
+            close_code = status.WS_1003_UNSUPPORTED_DATA
+            raise exception
+        except TypeError as exception:
+            close_code = status.WS_1003_UNSUPPORTED_DATA
+        except AccessError as exception:
+            close_code = status.WS_1008_POLICY_VIOLATION
+        except Exception as exception:
             close_code = status.WS_1011_INTERNAL_ERROR
-            raise exc
+            raise exception
         finally:
             for task in pending_tasks:
                 task.cancel()
@@ -103,8 +116,8 @@ class ChatEndpoint(WebSocketEndpoint):
         elif message['type'] == 'websocket.disconnect':
             return int(message.get("code") or status.WS_1000_NORMAL_CLOSURE)
         else:
-            # unexpected message type
-            pass
+            raise ValueError(
+                f'Unexpected value \'type \'={message["type"]} in websocket={websocket}')
 
     async def _dispatch_pubsub(self, websocket: WebSocket, timeout: float = 0.0) -> None:
         if self.pubsub.subscribed:
@@ -120,12 +133,13 @@ class ChatEndpoint(WebSocketEndpoint):
             case Message():
                 await websocket.send_json(asdict(data))
             case _:
-                # unexpected message type
-                pass
+                raise TypeError(f'Unexpected data type {data.__class__.__name__}'
+                                'received from pubsub channel')
 
     async def _process_message(self, message: Message) -> None:
         if not self.user:
-            pass  # exception unauthorized
+            raise AccessError(
+                f'Access for the user {self.user} is not allowed')
         message.sender = self.user
         message.uuid = uuid4()
         await process_message(message=message, redis=self.redis)
@@ -147,5 +161,5 @@ class ChatEndpoint(WebSocketEndpoint):
                 pending_tasks.add(asyncio.create_task(
                     coro=self._dispatch_pubsub(websocket, 5), name='redis_subscription'))
             else:
-                # unexpected job results exception
-                pass
+                raise ValueError(
+                    f'Unexpected task result={result} task_name={task_name}')
