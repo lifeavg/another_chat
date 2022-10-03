@@ -1,7 +1,7 @@
 from starlette.routing import WebSocketRoute
 
-from endpoints import ChatConnection
+from endpoints import ChatEndpoint
 
 router = [
-    WebSocketRoute(path='/', endpoint=ChatConnection),
+    WebSocketRoute(path='/', endpoint=ChatEndpoint),
 ]
