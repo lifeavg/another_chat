@@ -1,9 +1,13 @@
 {
     "cSpell.words": [
         "aioredis",
+        "coro",
         "fastapi",
         "keepalive",
+        "punsubscribe",
         "pydantic",
+        "pysqlite",
+        "sqlalchemy",
         "starlette",
         "uvicorn",
         "websockets"
