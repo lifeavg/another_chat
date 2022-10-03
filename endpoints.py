@@ -15,12 +15,6 @@ from schemas import (Message, MessageConfirmation, Subscription, User,
 from utils import from_json, to_redis_key
 
 
-class AccessError(Exception):
-    '''
-    Access for the user is not allowed
-    '''
-
-
 async def process_message(message: Message, redis: Redis) -> None:
     await redis.publish(channel=to_redis_key(object=message.receiver), message=json.dumps(asdict(message)))
 
@@ -69,7 +63,7 @@ class ChatEndpoint(WebSocketEndpoint):
                 raise TypeError(f'Unexpected data type {o_data.__class__.__name__}'
                                 f'received from websocket {websocket}')
 
-    # async def on_disconnect(self, websocket, close_code):
+    # async def on_disconnect(self, websocket: WebSocket, close_code: int):
     #     pass
 
     async def dispatch(self) -> None:
@@ -93,14 +87,8 @@ class ChatEndpoint(WebSocketEndpoint):
                     pending_tasks=pending_tasks,
                     websocket=websocket)
                 if result:
+                    close_code = result
                     break
-        except ValueError as exception:
-            close_code = status.WS_1003_UNSUPPORTED_DATA
-            raise exception
-        except TypeError as exception:
-            close_code = status.WS_1003_UNSUPPORTED_DATA
-        except AccessError as exception:
-            close_code = status.WS_1008_POLICY_VIOLATION
         except Exception as exception:
             close_code = status.WS_1011_INTERNAL_ERROR
             raise exception
@@ -109,10 +97,11 @@ class ChatEndpoint(WebSocketEndpoint):
                 task.cancel()
             await self.on_disconnect(websocket=websocket, close_code=close_code)
 
-    async def _dispatch_websocket(self, websocket: WebSocket) -> int | None:
-        message = await websocket.receive_json()
+    async def _dispatch_websocket(self, websocket: WebSocket) -> None | int:
+        message = await websocket.receive()
         if message['type'] == 'websocket.receive':
-            await self.on_receive(websocket=websocket, data=message['data'])
+            data = await self.decode(websocket, message)
+            await self.on_receive(websocket=websocket, data=data)
         elif message['type'] == 'websocket.disconnect':
             return int(message.get("code") or status.WS_1000_NORMAL_CLOSURE)
         else:
@@ -138,8 +127,7 @@ class ChatEndpoint(WebSocketEndpoint):
 
     async def _process_message(self, message: Message) -> None:
         if not self.user:
-            raise AccessError(
-                f'Access for the user {self.user} is not allowed')
+            pass
         message.sender = self.user
         message.uuid = uuid4()
         await process_message(message=message, redis=self.redis)
