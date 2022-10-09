@@ -1,11 +1,32 @@
 
 from starlette.authentication import (
-    AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser
+    AuthCredentials, AuthenticationBackend, AuthenticationError, BaseUser
 )
 import base64
 import binascii
+from uuid import UUID, uuid4
+
 
 from starlette.authentication import requires
+from schemas import User, Chat
+
+class AuthenticatedUser(BaseUser):
+    
+    def __init__(self) -> None:
+        super().__init__()
+        self.user = User(uuid=uuid4(), name='username aaaaaa')
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def display_name(self) -> str:
+        return 'username aaaaaa'
+
+    # @property
+    # def identity(self) -> str:
+    #     raise NotImplementedError()  # pragma: no cover
 
 
 class BasicAuthBackend(AuthenticationBackend):
@@ -24,6 +45,6 @@ class BasicAuthBackend(AuthenticationBackend):
 
         username, _, password = decoded.partition(":")
         # TODO: You'd want to verify the username and password here.
-        return AuthCredentials(["authenticated"]), SimpleUser(username)
+        return AuthCredentials(["authenticated"]), AuthenticatedUser()
 
 

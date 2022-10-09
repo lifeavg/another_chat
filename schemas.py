@@ -82,7 +82,7 @@ class Message:
     """
     receiver: UUID | None # Chat uuid
     status: MessageStatus
-    text: str | None
+    text: str | None = None
     uuid: UUID | None = None
     sender: User | None = None
 
@@ -101,7 +101,8 @@ class AccessLevel(Enum):
 @dataclass
 class AccessRequest:
     resource: UUID
-    user: UUID | None = None
+    level: AccessLevel
+    # user: UUID | None = None
 
 
 
