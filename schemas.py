@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import Enum
 from typing import Protocol
 from uuid import UUID
@@ -103,6 +104,33 @@ class AccessRequest:
     resource: UUID
     level: AccessLevel
     # user: UUID | None = None
+
+@dataclass
+class Permission:
+    user_uuid: UUID
+    resource_type: str
+    resource_uuid: UUID
+
+    @property
+    def key(self) -> str:
+        return (f'permission:{self.user_uuid}'
+                f':{self.resource_type}:{self.resource_uuid}')
+
+    @property
+    def resource_key(self) -> str:
+        return f':{self.resource_type}:{self.resource_uuid}'
+
+    @staticmethod
+    def from_str(permission: str) -> Permission:
+        keys = permission.split(':')
+        return Permission(user_uuid=UUID(keys[1]),
+                          resource_type=keys[2],
+                          resource_uuid=UUID(keys[3]))
+
+    @staticmethod
+    def update_channel(user: UUID) -> str:
+        return f'permission:update:{user}'
+        
 
 
 
