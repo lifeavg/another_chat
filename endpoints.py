@@ -2,22 +2,114 @@ import asyncio
 import json
 from dataclasses import asdict
 from functools import partial
-from typing import Any, Coroutine
+from typing import Any, Callable
 from uuid import UUID, uuid4
 
 from pydantic.json import pydantic_encoder
 from redis.asyncio.client import PubSub, Redis
-from starlette import status
 from starlette.authentication import requires
 from starlette.endpoints import WebSocketEndpoint
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
 
+from authentication import SecurityManager
 from connections import redis as global_redis
-from schemas import Message, MessageStatus, Permission, UserStatus
-from utils import to_redis_key
+from schemas import (CachedMessage, Chat, HasUUID, Message, MessageStatus,
+                     NewMessage, Permission, UpdateMessage, UserStatus)
+from utils import convert_json, to_type_object, type_key
 
 CACHE_EXPIRE_TIME = 18000  # 5h
+
+
+class RedisChatEndpoint:
+
+    def __init__(self, redis: Redis) -> None:
+        self.redis: Redis = redis
+        self.pubsub: PubSub = self.redis.pubsub()
+        self.pubsub_listener: asyncio.Task | None = None
+
+    async def listen(self) -> None:
+        async for data in self.pubsub.listen():  # type: ignore
+            print('unexpected data in listener', data)
+
+    def start_listener(self) -> None:
+        self.pubsub_listener = asyncio.create_task(
+            self.listen(), name=f'pubsub_listener_task_{self.pubsub}')
+
+    def stop_listener(self) -> None:
+        if self.pubsub_listener:
+            self.pubsub_listener.cancel()
+
+    async def subscribe(self, subscriptions: dict[str, Callable]) -> None:
+        await self.pubsub.subscribe(**subscriptions)
+
+    async def publish(self, channel: str, data: str) -> None:
+        await self.redis.publish(channel, data)
+
+    async def set_key(self, key: str, value: str, expr_delay: float | None = None) -> None:
+        await self.redis.set(name=key, value=value, ex=expr_delay)
+
+    async def get_key(self, key: str) -> Any:
+        return await self.redis.get(key)
+
+    async def delete_key(self, key: str) -> int:
+        return await self.redis.delete(key)
+
+    async def reset_channels(self,
+                             add: set[str],
+                             revoke: set[str],
+                             callback: Callable) -> None:
+        tasks = set()
+        if add:
+            tasks.add(self.subscribe(dict((x, callback) for x in add)))
+        if revoke:
+            tasks.add(self.pubsub.unsubscribe(*revoke))
+        await asyncio.gather(*tasks)
+
+    async def set_message(self, message: CachedMessage, expr_time: float) -> None:
+        await self.redis.set(
+            name=self.as_key(message),
+            value=json.dumps(message, default=pydantic_encoder),
+            ex=expr_time)
+
+    async def get_message(self, message_uuid: UUID, class_name: type = CachedMessage) -> CachedMessage | None:
+        cached_data = await self.redis.get(f'{type_key(class_name)}:{message_uuid}')
+        if cached_data:
+            json_data = convert_json(cached_data)
+            if json_data:
+                try:
+                    return CachedMessage(**json_data)
+                except TypeError as exception:
+                    return None
+        return None
+
+    async def publish_message(self, message: Message, channel_type: type = Chat) -> int:
+        return await self.redis.publish(
+            channel=f'{type_key(channel_type)}:{message.receiver}',
+            message=json.dumps(message, default=pydantic_encoder))
+
+    async def publish_message_update(self, message: UpdateMessage, receiver: UUID, channel_type: type = Chat) -> int:
+        return await self.redis.publish(
+            channel=f'{type_key(channel_type)}:{receiver}',
+            message=json.dumps(message, default=pydantic_encoder))
+
+    async def cache_message(self, message: Message, expr_time: float) -> None:
+        await asyncio.gather(self.set_message(CachedMessage(receiver=message.receiver,
+                                                            status=message.status,
+                                                            sender=message.sender,
+                                                            uuid=message.uuid),
+                                              expr_time),
+                             self.publish_message(message))
+
+    async def cache_message_update(self, message: CachedMessage, expr_time: float) -> None:
+        await asyncio.gather(self.set_message(message, expr_time),
+                             self.publish_message_update(UpdateMessage(status=message.status,
+                                                                       uuid=message.uuid),
+                                                         message.receiver))
+
+    @staticmethod
+    def as_key(object: HasUUID) -> str:
+        return f'{type_key(object.__class__)}:{object.uuid}'
 
 
 class ChatEndpoint(WebSocketEndpoint):
@@ -29,145 +121,81 @@ class ChatEndpoint(WebSocketEndpoint):
                  send: Send,
                  redis: Redis = global_redis) -> None:
         super().__init__(scope, receive, send)
-        self.redis: Redis = redis
-        self.pubsub: PubSub = self.redis.pubsub()
-        self.pubsub_task: asyncio.Task | None = None
-
-    async def guard_resource_permitted(self, websocket: WebSocket, receiver: UUID) -> bool:
-        # permission:user_uuid:resource_class_name:resource_uuid
-        return True
-
-    async def on_channel_message(self, data: dict, websocket: WebSocket) -> None:
-        json_data = self.process_cache(data['data'])
-        if json_data:
-            # TypeError: Message.__init__() missing 1 required positional argument:
-            message = Message(**json_data)
-            if message.receiver and await self.guard_resource_permitted(websocket, message.receiver):
-                await websocket.send_json(asdict(message))
-            # else: permission denied
-
-    async def load_permissions(self, websocket: WebSocket) -> tuple[dict[str, Coroutine], set[str]]:
-        new_channels = dict()
-        existing_channels = set(self.pubsub.channels)
-        async for permission_data in self.redis.scan_iter(f'permission:{websocket.user.user.uuid}'):
-            permission = Permission.from_str(permission_data)
-            if permission.resource_type == 'chat':
-                new_channels[permission.resource_key] = partial(
-                    self.on_channel_message, websocket=websocket)
-                existing_channels.discard(permission.resource_key)
-        new_channels['chat:3a78e770-6789-4e4a-9286-73ee6cd283a6'] = partial(
-            self.on_channel_message, websocket=websocket)  # TODO remove
-        return new_channels, existing_channels
-
-    async def reload_channels(self, websocket: WebSocket, data: Any | None = None) -> None:
-        add, revoke = await self.load_permissions(websocket)
-        await asyncio.gather(self.pubsub.subscribe(**add), self.pubsub.unsubscribe(*revoke))
-
-    async def pubsub_listener(self, pubsub: PubSub) -> None:
-        async for data in pubsub.listen():  # type: ignore
-            print('pubsub', data)
+        self.security = SecurityManager(redis)
+        self.redis = RedisChatEndpoint(redis)
 
     @requires('authenticated')
     async def on_connect(self, websocket: WebSocket) -> None:
+        on_message_callback = partial(self.on_channel_message,
+                                      websocket=websocket)
+
         await asyncio.gather(
             websocket.accept(),
-            self.pubsub.subscribe(**{Permission.update_channel(websocket.user.user.uuid):
-                                     partial(self.load_permissions, websocket=websocket)}),
-            self.reload_channels(websocket),
-            self.redis.set(
-                name=to_redis_key(websocket.user.user),
-                value=json.dumps(UserStatus.ONLINE, default=pydantic_encoder)))
-        self.pubsub_task = asyncio.create_task(
-            self.pubsub_listener(self.pubsub), name='pubsub_listener_task')
-
-    async def send_message(self, message: Message, websocket: WebSocket) -> None:
-        if not message.receiver:
-            pass
-        if not await self.guard_resource_permitted(websocket, message.receiver):
-            # TODO exception or close with code ???
-            pass
-        message.sender = websocket.user.user
-        message.uuid = uuid4()
-        await self.send_message_cache(message)
-
-    async def send_message_cache(self, message: Message) -> None:
-        no_text_message = Message(
-            uuid=message.uuid,
-            receiver=message.receiver,
-            status=message.status)
-        await asyncio.gather(
-            self.redis.set(
-                name=to_redis_key(no_text_message),  # type: ignore
-                value=json.dumps(no_text_message, default=pydantic_encoder),
-                ex=CACHE_EXPIRE_TIME),
-            self.redis.publish(
-                channel=f'chat:{message.receiver}',
-                message=json.dumps(message, default=pydantic_encoder)))
-
-    async def update_message_cache(self, message: Message, websocket: WebSocket) -> None:
-        if not (message.receiver and message.uuid):
-            # TODO exception or close with code ???
-            pass
-        if not await self.guard_resource_permitted(websocket, message.receiver):
-            # TODO exception or close with code ???
-            pass
-        await self.send_message_cache(message)
-
-    def process_cache(self, cached_data: str) -> dict[str, Any]:
-        json_data = {}
-        try:
-            json_data = json.loads(cached_data)
-            if not isinstance(json_data, dict):
-                # TODO exception or close with code ???
-                json_data = dict()
-        except json.JSONDecodeError as exception:
-            # TODO cache error
-            json_data = dict()
-        finally:
-            return json_data
-
-    async def update_message(self, message: Message, websocket: WebSocket) -> None:
-        def validate_cached_data(data: str | None) -> bool:
-            if not data:
-                # TODO missing cache
-                return False
-            if not isinstance(data, str):
-                # TODO exception or close with code ???
-                return False
-            return True
-
-        if not message.uuid:
-            raise ValueError(
-                f'Missing uuid in update message from user={websocket.user.user}')
-        cached_data = await self.redis.get(name=to_redis_key(message))
-        if validate_cached_data(cached_data):
-            json_data = self.process_cache(cached_data)
-            if json_data:
-                # TypeError: Message.__init__() missing 1 required positional argument:
-                cached_message = Message(**json_data)
-                cached_message.status = message.status
-                await self.update_message_cache(cached_message, websocket)
-
-    async def on_websocket_message(self, message: Message, websocket: WebSocket) -> None:
-        match message.status:
-            case MessageStatus.SENT:
-                await self.send_message(message, websocket)
-            case MessageStatus.DELIVERED:
-                await self.update_message(message, websocket)
-            case MessageStatus.READ:
-                await self.update_message(message, websocket)
-            case _:
-                await websocket.close(
-                    code=status.WS_1008_POLICY_VIOLATION,  # TODO close codes
-                    reason='Unexpected data received aaa')
-                # TODO exception or close with code ???
-                raise ValueError(
-                    f'Incorrect MessageStatus user={websocket.user.user} message={message.uuid}, receiver={message.receiver}')
+            self.redis.subscribe({Permission.update_channel(websocket.user.uuid):
+                                  partial(self.redis.reset_channels,
+                                          *await self.security.load_channels_from_permissions(websocket.user.user,
+                                                                                              Chat,
+                                                                                              self.redis.pubsub.channels),
+                                          callback=on_message_callback)}),
+            # will silently fail second subscribe job
+            # self.redis.reset_channels(*await self.security.load_channels_from_permissions(websocket.user.user,
+            #                                                                               Chat,
+            #                                                                               self.redis.pubsub.channels),
+            #                           callback=on_message_callback),
+            self.redis.set_key(key=RedisChatEndpoint.as_key(websocket.user.user),
+                               value=json.dumps(UserStatus.ONLINE, default=pydantic_encoder)))
+        await self.redis.reset_channels(*await self.security.load_channels_from_permissions(websocket.user.user,
+                                                                                            Chat,
+                                                                                            self.redis.pubsub.channels),
+                                        callback=on_message_callback)
+        self.redis.start_listener()
 
     async def on_receive(self, websocket: WebSocket, data: dict[str, Any]) -> None:
-        await self.on_websocket_message(Message(**data), websocket)
+        obj = to_type_object(data, (NewMessage, UpdateMessage))
+        match obj:
+            case NewMessage():
+                if await self.security.is_permitted(Permission(user_uuid=websocket.user.uuid,
+                                                               resource_type=Chat,
+                                                               resource_uuid=obj.receiver)):
+                    await self.redis.cache_message(Message(receiver=obj.receiver,
+                                                           status=MessageStatus.SENT,
+                                                           sender=websocket.user.user,
+                                                           text=obj.text,
+                                                           uuid=uuid4()),
+                                                   CACHE_EXPIRE_TIME)
+            case UpdateMessage():
+                cached = await self.redis.get_message(obj.uuid)
+                if cached and await self.security.is_permitted(Permission(user_uuid=cached.sender.uuid,
+                                                                          resource_type=Chat,
+                                                                          resource_uuid=cached.receiver)):
+                    await self.redis.cache_message_update(CachedMessage(receiver=cached.receiver,
+                                                                        status=obj.status,
+                                                                        sender=cached.sender,
+                                                                        uuid=cached.uuid),
+                                                          CACHE_EXPIRE_TIME)
+            case _:
+                pass
 
     async def on_disconnect(self, websocket: WebSocket, close_code: int):
-        await self.redis.delete(to_redis_key(websocket.user.user))
-        if self.pubsub_task:
-            self.pubsub_task.cancel()
+        await self.redis.delete_key(RedisChatEndpoint.as_key(websocket.user.user))
+        self.redis.stop_listener()
+
+    async def on_channel_message(self, channel_data: dict[str, Any], websocket: WebSocket) -> None:
+        data = channel_data.get('data')
+        if data:
+            obj = to_type_object(convert_json(str(data)),
+                                 (Message, UpdateMessage))
+            match obj:
+                case Message():
+                    if await self.security.is_permitted(Permission(user_uuid=obj.sender.uuid,
+                                                                   resource_type=Chat,
+                                                                   resource_uuid=obj.receiver)):
+                        await websocket.send_json(asdict(obj))
+                case UpdateMessage():
+                    cached = await self.redis.get_message(obj.uuid)
+                    if cached and await self.security.is_permitted(Permission(user_uuid=cached.sender.uuid,
+                                                                              resource_type=Chat,
+                                                                              resource_uuid=cached.receiver)):
+                        await websocket.send_json(asdict(obj))
+                case _:
+                    pass
