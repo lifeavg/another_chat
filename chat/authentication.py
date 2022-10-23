@@ -42,14 +42,14 @@ class BasicAuthBackend(AuthenticationBackend):
         auth = conn.headers["Authorization"]
         try:
             scheme, credentials = auth.split()
-            if scheme.lower() != 'basic':
+            if scheme.lower() != 'bearer':
                 return
             decoded = base64.b64decode(credentials).decode("ascii")
         except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
             raise AuthenticationError('Invalid basic auth credentials')
-
-        username, _, password = decoded.partition(":")
-        # TODO: You'd want to verify the username and password here.
+        else:
+            username, _, password = decoded.partition(":")
+            # TODO: You'd want to verify the username and password here.
         return AuthCredentials(["authenticated"]), AuthenticatedUser()
 
 
