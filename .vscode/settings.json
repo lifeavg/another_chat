@@ -7,6 +7,7 @@
         "punsubscribe",
         "pydantic",
         "pysqlite",
+        "sessionmaker",
         "sqlalchemy",
         "starlette",
         "uvicorn",
