@@ -8,7 +8,7 @@ from models import LoginData, LoginAttempt
 DB_CONNECTION = 'postgresql+asyncpg'
 DB_USER = 'postgres'
 DB_PASSWORD = 'mysecretpassword'
-DB_HOST = 'localhost:5432'
+DB_HOST = 'postgres:5432'
 DB_NAME = 'test'
 
 

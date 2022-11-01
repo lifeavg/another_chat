@@ -12,7 +12,7 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-from authentication import SecurityManager
+from authentication import SecurityManager, AuthenticatedUser
 from connections import redis as global_redis
 from schemas import (CachedMessage, Chat, HasUUID, Message, MessageStatus,
                      NewMessage, Permission, UpdateMessage, UserStatus)
@@ -177,7 +177,8 @@ class ChatEndpoint(WebSocketEndpoint):
                 pass
 
     async def on_disconnect(self, websocket: WebSocket, close_code: int):
-        await self.redis.delete_key(RedisChatEndpoint.as_key(websocket.user.user))
+        if isinstance(websocket.user, AuthenticatedUser):
+            await self.redis.delete_key(RedisChatEndpoint.as_key(websocket.user.user))
         self.redis.stop_listener()
 
     async def on_channel_message(self, channel_data: dict[str, Any], websocket: WebSocket) -> None:

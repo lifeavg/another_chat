@@ -1,0 +1,5 @@
+redis==4.3.4
+starlette==0.20.4
+pydantic==1.10.2
+uvicorn==0.18.3
+websockets==10.3

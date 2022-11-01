@@ -1,0 +1,42 @@
+version: "3.9"
+
+
+services:
+  chat:
+    build: chat/
+    depends_on:
+      - redis
+    networks:
+      - chat-net
+    ports:
+      - "8001:8001"
+
+  authentication:
+    build: authentication/
+    depends_on:
+      - postgres
+    networks:
+      - chat-net
+    ports:
+      - "8002:8002"
+
+  redis:
+    image: "redis:latest"
+    networks:
+      - chat-net
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: "postgres:latest"
+    networks:
+      - chat-net
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+
+
+networks:
+  chat-net:
+    driver: bridge
