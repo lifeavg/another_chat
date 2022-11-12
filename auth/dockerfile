@@ -2,9 +2,9 @@ FROM python:3.10.8-alpine
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY ./requirements/env.txt ./
+RUN pip install --no-cache-dir -r env.txt
 
-COPY ./src/ .
+COPY ./auth/ .
 
 CMD [ "uvicorn", "main:app", "--port", "8002" , "--log-level", "debug", "--host", "0.0.0.0"]     

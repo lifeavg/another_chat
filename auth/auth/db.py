@@ -2,13 +2,13 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
-from schemas import LoginAttemptResult
-from models import LoginData, LoginAttempt
+from .schemas import LoginAttemptResult
+from .models import User, LoginAttempt
 
 DB_CONNECTION = 'postgresql+asyncpg'
 DB_USER = 'postgres'
 DB_PASSWORD = 'mysecretpassword'
-DB_HOST = 'postgres:5432'
+DB_HOST = 'localhost:5432'
 DB_NAME = 'test'
 
 
@@ -25,12 +25,12 @@ async def get_db_session() -> AsyncSession:  # type: ignore
         yield session
 
 
-async def get_login_data_by_login(session: AsyncSession, login: str, active: bool | None = None) -> LoginData:
+async def get_login_data_by_username(session: AsyncSession, login: str, active: bool | None = None) -> User:
     statement = ''
     if active is not None:
-        statement = select(LoginData).where(LoginData.login == login,
-                                            LoginData.active == active)
-    statement = select(LoginData).where(LoginData.login == login)
+        statement = select(User).where(User.login == login,
+                                            User.active == active)
+    statement = select(User).where(User.login == login)
     return (await session.execute(statement)).scalars().first()
 
 async def get_login_limit_by_fingerprint(session: AsyncSession, fingerprint: str, delay_minutes: int) -> list[LoginAttempt]:
