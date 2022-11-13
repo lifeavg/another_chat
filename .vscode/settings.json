@@ -1,13 +1,16 @@
 {
     "cSpell.words": [
         "aioredis",
+        "asyncpg",
         "backref",
         "coro",
         "fastapi",
         "keepalive",
+        "ondelete",
         "punsubscribe",
         "pydantic",
         "pysqlite",
+        "selectinload",
         "sessionmaker",
         "sqlalchemy",
         "starlette",
