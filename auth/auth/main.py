@@ -91,37 +91,184 @@ async def sign_up(registration_data: sh.LoginData,
     await db_session.commit()
     return {'login_id': login_data.id}  # type: ignore
 
-@app.post("/activate?id=ghjghjghj")
-async def activate():
-    """activate new created account"""
+
+
+
+@app.post("/users")
+async def _():
     pass
 
-@app.post("/deactivate?id=ghjghjghj")
-async def deactivate():
-    """deactivate account"""
+@app.post("/signup")
+async def _():
     pass
 
-@app.get("/user")
-async def user_information():
-    """get user account information"""
+@app.get("/users")
+async def _():
     pass
 
-@app.put("/user")
-async def update_user():
-    """update user information"""
+@app.get("/users/:id")
+async def _():
     pass
 
-@app.post("/delete?=id")
-async def delete_user():
-    """delete user from system"""
+@app.get("/users/:id/permissions")
+async def _():
     pass
 
-@app.get("/user_sessions?active=true|false|null")
-async def get_user_sessions():
-    """list of user sessions"""
+@app.get("/users/:id/login_sessions")
+async def _():
     pass
 
-@app.post("/terminate")
-async def terminate():
-    """terminate user sessions from request"""
+@app.get("/users/:id/login_attempts")
+async def _():
+    pass
+
+@app.get("/users?external_id=, login=, active=, created_timestamp_from=, '\
+         'created_timestamp_to=, permissions=, number=, offset=")
+async def _():
+    pass
+
+@app.patch("/users/:id?confirmed=true") # add all params?
+async def _():
+    pass
+
+@app.patch("/users/:id?active=true")
+async def _():
+    pass
+
+@app.post("/id/password")
+async def _():
+    pass
+
+@app.put("/users/:id") # add all params?
+async def _():
+    pass
+
+@app.delete("/users/delete/id")
+async def _():
+    pass
+
+############################
+
+@app.post('/login_sessions')
+async def _():
+    pass
+
+@app.post('/signin')
+async def _():
+    pass
+
+@app.get("/login_sessions")
+async def _():
+    pass
+
+@app.get("/login_sessions/id")
+async def _():
+    pass
+
+@app.get("/login_sessions/id/access_sessions")
+async def _():
+    pass
+
+@app.get("/login_sessions/id/access_attempts")
+async def _():
+    pass
+
+@app.get("/login_sessions?user_id= ...")
+async def _():
+    pass
+
+@app.get("/login_sessions?user_id=")
+async def _():
+    pass
+
+@app.patch("/login_sessions/id?user_id= ...")
+async def _():
+    pass
+
+@app.put("/login_sessions/id?user_id= ...")
+async def _():
+    pass
+
+@app.post("/login_sessions/id/terminate")
+async def _():
+    pass
+
+#########################################
+
+@app.get("/login_attempts")
+async def _():
+    pass
+
+
+@app.get("/login_attempts?")
+async def _():
+    pass
+
+#######################################
+
+@app.post('/access_sessions')
+async def _():
+    pass
+
+@app.get('/access_sessions')
+async def _():
+    pass
+
+@app.patch('/access_sessions')
+async def _():
+    pass
+
+#######################################
+
+@app.get("/access_attempts")
+async def _():
+    pass
+
+
+@app.get("/access_attempts?")
+async def _():
+    pass
+
+#######################################
+
+@app.post('/services')
+async def _():
+    pass
+
+@app.get('/services')
+async def _():
+    pass
+
+@app.get('/services/id')
+async def _():
+    pass
+
+@app.get('/services/id/permissions')
+async def _():
+    pass
+
+@app.patch('/services')
+async def _():
+    pass
+
+@app.put('/services')
+async def _():
+    pass
+
+#######################################
+
+@app.post('/permissions')
+async def _():
+    pass
+
+@app.get('/permissions')
+async def _():
+    pass
+
+@app.patch('/permissions')
+async def _():
+    pass
+
+@app.put('/permissions')
+async def _():
     pass
