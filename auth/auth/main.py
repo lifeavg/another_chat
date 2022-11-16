@@ -92,183 +92,157 @@ async def sign_up(registration_data: sh.LoginData,
     return {'login_id': login_data.id}  # type: ignore
 
 
+class RegistrationData:
+    external_id:int
+    login: str
+    password: str
+
+class LoginData:
+    login: str
+    password: str
+
+class UserData:
+    id: int
+    external_id: int
+    login: str
+    confirmed: bool
+    created_timestamp: datetime
 
 
-@app.post("/users")
-async def _():
-    pass
+class AccessSession:
+    id: int
+    login_session_id: int
+    start: datetime
+    end: datetime
+    stopped: bool
+
+class LoginSession:
+    id: int
+    user_id: int
+    start: datetime
+    end: datetime | None
+    stopped: bool
+
+
+class AccessToken:
+    access_token: str
+    # 
+    id: int
+    external_id: int
+    permissions: list
+    end: datetime
+    
+
+class SessionToken:
+    session_token: str
+    id: int
+    user_id: int
+    end: datetime
+
+
+class Permission:
+    id: int
+    name: str
+    service_id: int
+
+class PermissionName:
+    permissuion: str
+
+class Service:
+    id: int
+    name: str
+    key: str
+    permissions: list[PermissionName]
 
 @app.post("/signup")
-async def _():
+async def _(user: RegistrationData) -> UserData:
     pass
 
-@app.get("/users")
-async def _():
+@app.get("/users/id")
+async def _(id: int) -> UserData:
     pass
 
-@app.get("/users/:id")
-async def _():
+@app.get("/users/id/permissions")
+async def _(id: int) -> list[PermissionName]:
     pass
 
-@app.get("/users/:id/permissions")
-async def _():
+@app.post("/users/id/permissions/add")
+async def _(id: int, permissions: list[PermissionName]) -> list[PermissionName]:
     pass
 
-@app.get("/users/:id/login_sessions")
-async def _():
+@app.post("/users/id/permissions/remove")
+async def _(id: int, permissions: list[PermissionName]) -> list[PermissionName]:
     pass
 
-@app.get("/users/:id/login_attempts")
-async def _():
+@app.get("/users/id/login_sessions?active")
+async def _(id: int, active: bool | None = None) -> list[LoginSession]:
     pass
 
-@app.get("/users?external_id=, login=, active=, created_timestamp_from=, '\
-         'created_timestamp_to=, permissions=, number=, offset=")
-async def _():
+@app.post('/signin')
+async def _(login: LoginData) -> SessionToken:
     pass
 
-@app.patch("/users/:id?confirmed=true") # add all params?
-async def _():
+@app.put("/users/id?confirmed=[true|false], active=[true|false]")
+async def _(id: int, confirmed: bool | None = None, active: bool | None = None):
     pass
 
-@app.patch("/users/:id?active=true")
-async def _():
+@app.post("/users/id/update")
+async def _(login: LoginData):
     pass
 
-@app.post("/id/password")
-async def _():
-    pass
-
-@app.put("/users/:id") # add all params?
-async def _():
-    pass
-
-@app.delete("/users/delete/id")
-async def _():
+@app.delete("/users/id")
+async def _(id: int):
     pass
 
 ############################
 
-@app.post('/login_sessions')
-async def _():
-    pass
-
-@app.post('/signin')
-async def _():
-    pass
-
-@app.get("/login_sessions")
-async def _():
-    pass
 
 @app.get("/login_sessions/id")
-async def _():
+async def _(id: int) -> LoginSession:
     pass
 
-@app.get("/login_sessions/id/access_sessions")
-async def _():
-    pass
-
-@app.get("/login_sessions/id/access_attempts")
-async def _():
-    pass
-
-@app.get("/login_sessions?user_id= ...")
-async def _():
-    pass
-
-@app.get("/login_sessions?user_id=")
-async def _():
-    pass
-
-@app.patch("/login_sessions/id?user_id= ...")
-async def _():
-    pass
-
-@app.put("/login_sessions/id?user_id= ...")
-async def _():
+@app.get("/login_sessions/id/access_sessions?active")
+async def _(id: int, active: bool | None = None) -> list[AccessSession]:
     pass
 
 @app.post("/login_sessions/id/terminate")
-async def _():
-    pass
-
-#########################################
-
-@app.get("/login_attempts")
-async def _():
-    pass
-
-
-@app.get("/login_attempts?")
-async def _():
+async def _(id: int):
     pass
 
 #######################################
 
 @app.post('/access_sessions')
-async def _():
+async def _(permission: list[Permission]) -> AccessToken:
     pass
 
-@app.get('/access_sessions')
-async def _():
-    pass
-
-@app.patch('/access_sessions')
-async def _():
+@app.get('/access_sessions/id')
+async def _(id: int):
     pass
 
 #######################################
 
-@app.get("/access_attempts")
-async def _():
+@app.get('/services/service_name')
+async def _(name: str) -> Service:
     pass
 
-
-@app.get("/access_attempts?")
-async def _():
+@app.post('/services/service_name/permissions')
+async def _(name: str) -> list[PermissionName]:
     pass
 
-#######################################
-
-@app.post('/services')
-async def _():
+@app.get('/services/service_name/permissions')
+async def _(name: str) -> list[PermissionName]:
     pass
 
-@app.get('/services')
-async def _():
+@app.delete('/services/service_name/permissions/permission_name')
+async def _(service_name: str, permission_name: str):
     pass
 
-@app.get('/services/id')
-async def _():
-    pass
-
-@app.get('/services/id/permissions')
-async def _():
-    pass
-
-@app.patch('/services')
-async def _():
-    pass
-
-@app.put('/services')
-async def _():
+@app.put('/services/service_name?key')
+async def _(service_name: str, key: str):
     pass
 
 #######################################
 
-@app.post('/permissions')
-async def _():
-    pass
-
-@app.get('/permissions')
-async def _():
-    pass
-
-@app.patch('/permissions')
-async def _():
-    pass
-
-@app.put('/permissions')
-async def _():
+@app.get('/permissions/permission_name')
+async def _(permission_name: str) -> Permission:
     pass
