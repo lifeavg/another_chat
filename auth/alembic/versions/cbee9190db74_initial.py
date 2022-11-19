@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: 18e6b2b314e1
+Revision ID: cbee9190db74
 Revises: 
-Create Date: 2022-11-13 21:08:10.275195
+Create Date: 2022-11-20 01:12:56.834216
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '18e6b2b314e1'
+revision = 'cbee9190db74'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -33,6 +33,7 @@ def upgrade() -> None:
     sa.Column('external_id', sa.Integer(), nullable=False),
     sa.Column('login', sa.String(length=32), nullable=False),
     sa.Column('password', sa.String(length=128), nullable=False),
+    sa.Column('confirmed', sa.Boolean(), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('created_timestamp', sa.DateTime(timezone=True), server_default=sa.text('now_utc()'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
@@ -63,6 +64,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=128), nullable=False),
     sa.Column('service_id', sa.Integer(), nullable=False),
+    sa.Column('expiration_min', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['service_id'], ['auth.service.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name'),

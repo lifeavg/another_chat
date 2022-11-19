@@ -1,6 +1,5 @@
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer,
-                        MetaData, PrimaryKeyConstraint, String, Table, func,
-                        UniqueConstraint)
+                        MetaData, PrimaryKeyConstraint, String, Table, func)
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql.functions import GenericFunction
 
@@ -124,6 +123,7 @@ class Permission(Base):
     name = Column(String(128), nullable=False, unique=True)
     service_id = Column(Integer, ForeignKey(
         'service.id', ondelete='CASCADE'), nullable=False)
+    expiration_min = Column(Integer, nullable=False)
     service = relationship('Service', back_populates="permissions")
 
     def __repr__(self) -> str:

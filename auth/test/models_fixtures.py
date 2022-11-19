@@ -9,9 +9,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import selectinload, sessionmaker
 
-from ..auth.models import (AccessAttempt, AccessSession, LoginAttempt,
+from ..auth.db.models import (AccessAttempt, AccessSession, LoginAttempt,
                            LoginSession, Permission, Service, User)
-from ..auth.schemas import AccessAttemptResult, LoginAttemptResult
+from ..auth.api.schemas import AccessAttemptResult, LoginAttemptResult
 
 TEARDOWN: bool = False
 
@@ -195,7 +195,8 @@ async def service(session):
 async def service_permission(session, service):
     permission = Permission(
         name=random_string(10),
-        service_id=service.id)
+        service_id=service.id,
+        expiration_min=randint(5, 10))
     session.add(permission)
     await session.commit()
     yield permission

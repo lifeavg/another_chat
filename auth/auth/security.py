@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
 
-from .db import AsyncSession, login_limit_by_fingerprint
+import auth.db.query as dq
 
 
 SEC_ACCESS_EXPIRE_MINUTES = 30
@@ -33,11 +33,11 @@ def create_access_token(data: dict,
     encoded_jwt = jwt.encode(data, secret, algorithm)
     return encoded_jwt
 
-async def login_limit(session: AsyncSession,
+async def login_limit(session: dq.AsyncSession,
                       fingerprint: str,
                       delay_minutes: int = SEC_ATTEMPT_DELAY_MINUTES,
                       max_attempts: int = SEC_MAX_ATTEMPT_DELAY_COUNT) -> timedelta | None:
-    attempts = await login_limit_by_fingerprint(session, fingerprint, delay_minutes)
+    attempts = await dq.login_limit_by_fingerprint(session, fingerprint, delay_minutes)
     if len(attempts) >= max_attempts:
         return timedelta(minutes=delay_minutes) - (datetime.utcnow() - attempts[0].date_time())
 

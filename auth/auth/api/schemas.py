@@ -61,11 +61,10 @@ class LoginSession:
 class Permission:
     id: int
     name: str
+    expiration_min: int
     service_id: int
 
-@dataclass
-class PermissionName:
-    permission: str
+PermissionName = str
 
 @dataclass
 class Service:
