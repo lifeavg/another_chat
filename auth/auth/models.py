@@ -1,5 +1,6 @@
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer,
-                        MetaData, PrimaryKeyConstraint, String, Table, func)
+                        MetaData, PrimaryKeyConstraint, String, Table, func,
+                        UniqueConstraint)
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql.functions import GenericFunction
 
@@ -30,7 +31,8 @@ class User(Base):
     external_id = Column(Integer, nullable=False)
     login = Column(String(32), nullable=False, unique=True)
     password = Column(String(128), nullable=False)
-    active = Column(Boolean, nullable=False, default=False)
+    confirmed = Column(Boolean, nullable=False, default=False)
+    active = Column(Boolean, nullable=False, default=True)
     created_timestamp = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now_utc())
     permissions = relationship(

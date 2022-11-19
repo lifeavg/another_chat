@@ -12,6 +12,7 @@
         "pysqlite",
         "selectinload",
         "sessionmaker",
+        "signin",
         "sqlalchemy",
         "starlette",
         "uvicorn",

@@ -25,18 +25,26 @@ async def get_db_session() -> AsyncSession:  # type: ignore
         yield session
 
 
-async def get_login_data_by_username(session: AsyncSession, login: str, active: bool | None = None) -> User:
+async def user_by_login(session: AsyncSession,
+                           login: str,
+                           active: bool | None = None
+                           ) -> User:
     statement = ''
     if active is not None:
         statement = select(User).where(User.login == login,
-                                            User.active == active)
+                                       User.active == active)
     statement = select(User).where(User.login == login)
     return (await session.execute(statement)).scalars().first()
 
-async def get_login_limit_by_fingerprint(session: AsyncSession, fingerprint: str, delay_minutes: int) -> list[LoginAttempt]:
+async def login_limit_by_fingerprint(session: AsyncSession,
+                                     fingerprint: str,
+                                     delay_minutes: int
+                                     ) -> list[LoginAttempt]:
     statement = (select(LoginAttempt)
                  .where(LoginAttempt.fingerprint == fingerprint,
-                        LoginAttempt.response.not_in((LoginAttemptResult.SUCCESS.value, LoginAttemptResult.LIMIT_REACHED.value)),
-                        LoginAttempt.date_time == datetime.utcnow() - timedelta(minutes=delay_minutes))
+                        LoginAttempt.response.not_in((LoginAttemptResult.SUCCESS.value,
+                                                      LoginAttemptResult.LIMIT_REACHED.value)),
+                        (LoginAttempt.date_time ==
+                         datetime.utcnow() - timedelta(minutes=delay_minutes)))
                  .order_by(LoginAttempt.date_time.desc()))
     return (await session.execute(statement)).scalars().all()
