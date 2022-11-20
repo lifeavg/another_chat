@@ -54,7 +54,7 @@ class LoginSession:
     id: int
     user_id: int
     start: datetime
-    end: datetime | None
+    end: datetime
     stopped: bool
 
 @dataclass

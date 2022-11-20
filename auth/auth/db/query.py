@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy import func, or_, and_
 
 
 async def user_by_login(
@@ -70,6 +71,31 @@ async def permissions_by_names(
                  .where(md.Permission.name.in_(set(permissions))))
     return list((await session.execute(statement)).scalars().all())
 
+async def user_login_sessions(
+    session: con.AsyncSession,
+    id: int,
+    limit: int,
+    offset: int,
+    active: bool | None = None
+) -> list[md.LoginSession]:
+    conditions = [(md.LoginSession.user_id == id), ]
+    match active:
+        case True:
+            conditions.append((md.LoginSession.stopped == (not active)))
+            conditions.append((md.LoginSession.end > func.now_utc()))
+        case False:
+            conditions.append(
+                or_(md.LoginSession.stopped == (not active),
+                md.LoginSession.end > func.now_utc())
+            )
+        case _:
+            pass
+    return (await session.execute(select(md.LoginSession)
+                                  .where(*conditions)
+                                  .order_by(md.LoginSession.start.desc())
+                                  .limit(limit)
+                                  .offset(offset))).scalars().all()
+    
 
 async def login_limit_by_fingerprint(
     session: AsyncSession,

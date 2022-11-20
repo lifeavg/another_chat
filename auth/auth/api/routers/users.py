@@ -22,7 +22,7 @@ async def user_data(
 
 
 @users_router.get('/{id}/permissions')
-async def user_permissions_list(
+async def user_permissions(
     id: int,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> list[sh.PermissionName]:
@@ -76,16 +76,29 @@ async def remove_user_permissions(
 @users_router.get('/{id}/login_sessions')
 async def user_login_sessions(
     id: int,
-    active: bool | None = None
-) -> list[sh.LoginSession]:  # type: ignore
-    pass
+    active: bool | None = None,
+    limit: int = 10,
+    offset: int = 0,
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> list[sh.LoginSession]:
+    sessions = await dq.user_login_sessions(db_session, id, limit, offset, active)
+    return [sh.LoginSession(
+                id=s.id,  # type: ignore
+                user_id=s.user_id,  # type: ignore
+                start=s.start,  # type: ignore
+                end=s.end,  # type: ignore
+                stopped=s.stopped)  # type: ignore
+            for s in sessions]
+    
 
 
 @users_router.put('/{id}')
 async def update_user_state(
-        id: int,
-        confirmed: bool | None = None,
-        active: bool | None = None) -> None:
+    id: int,
+    confirmed: bool | None = None,
+    active: bool | None = None,
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> None:
     pass
 
 
