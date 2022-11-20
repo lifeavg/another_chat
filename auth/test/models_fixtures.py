@@ -9,9 +9,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import selectinload, sessionmaker
 
-from ..auth.db.models import (AccessAttempt, AccessSession, LoginAttempt,
-                           LoginSession, Permission, Service, User)
 from ..auth.api.schemas import AccessAttemptResult, LoginAttemptResult
+from ..auth.db.models import (AccessAttempt, AccessSession, LoginAttempt,
+                              LoginSession, Permission, Service, User)
 
 TEARDOWN: bool = False
 

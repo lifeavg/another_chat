@@ -1,13 +1,15 @@
-import fastapi as fs
-import auth.db.connection as con
-import auth.db.query as dq
-import auth.api.schemas as sh
-import auth.api.base as b
-import auth.security as sec
 import asyncio
 
+import fastapi as fs
+
+import auth.api.base as b
+import auth.api.schemas as sh
+import auth.db.connection as con
+import auth.db.query as dq
+import auth.security as sec
 
 users_router = fs.APIRouter(prefix='/users')
+
 
 @users_router.get('/{id}')
 async def user_data(
@@ -16,10 +18,10 @@ async def user_data(
 ) -> sh.UserData:
     user = await b.user_by_id(db_session, id, True)
     return sh.UserData(id=user.id,  # type: ignore
-                    external_id=user.external_id,  # type: ignore
-                    login=user.login,  # type: ignore
-                    confirmed=user.confirmed,  # type: ignore
-                    created_timestamp=user.created_timestamp)  # type: ignore
+                       external_id=user.external_id,  # type: ignore
+                       login=user.login,  # type: ignore
+                       confirmed=user.confirmed,  # type: ignore
+                       created_timestamp=user.created_timestamp)  # type: ignore
 
 
 @users_router.get('/{id}/permissions')
@@ -46,7 +48,8 @@ async def add_user_permissions(
             task.cancel()
         raise exception
     else:
-        intersection = set(p.name for p in user.permissions).intersection(perm_set)
+        intersection = set(
+            p.name for p in user.permissions).intersection(perm_set)
         if intersection:
             raise fs.HTTPException(
                 status_code=fs.status.HTTP_409_CONFLICT,
@@ -65,7 +68,8 @@ async def remove_user_permissions(
     tasks = (b.user_with_permissions_by_id(db_session, id),
              b.permissions_by_names(perm_set, db_session))
     user, perms = await asyncio.gather(*tasks)
-    intersection_diff = perm_set - set(p.name for p in user.permissions).intersection(perm_set)
+    intersection_diff = perm_set - \
+        set(p.name for p in user.permissions).intersection(perm_set)
     if intersection_diff:
         raise fs.HTTPException(
             status_code=fs.status.HTTP_409_CONFLICT,
@@ -84,13 +88,12 @@ async def user_login_sessions(
 ) -> list[sh.LoginSession]:
     sessions = await dq.user_login_sessions(db_session, id, limit, offset, active)
     return [sh.LoginSession(
-                id=s.id,  # type: ignore
-                user_id=s.user_id,  # type: ignore
-                start=s.start,  # type: ignore
-                end=s.end,  # type: ignore
-                stopped=s.stopped)  # type: ignore
-            for s in sessions]
-    
+        id=s.id,  # type: ignore
+        user_id=s.user_id,  # type: ignore
+        start=s.start,  # type: ignore
+        end=s.end,  # type: ignore
+        stopped=s.stopped)  # type: ignore
+        for s in sessions]
 
 
 @users_router.put('/{id}')

@@ -1,4 +1,5 @@
 import fastapi as fs
+
 import auth.api.schemas as sh
 
 login_sessions_router = fs.APIRouter(prefix='/login_sessions')
@@ -24,4 +25,3 @@ async def terminate_login_session(
     id: int
 ) -> None:
     pass
-

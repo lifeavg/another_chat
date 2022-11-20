@@ -1,11 +1,12 @@
-import functools
-import fastapi  as fa
 import asyncio
+import functools
 
-import auth.db.connection as con
-import auth.db.query as dq
-import auth.db.models as md
+import fastapi as fa
+
 import auth.api.schemas as sh
+import auth.db.connection as con
+import auth.db.models as md
+import auth.db.query as dq
 import auth.security as sec
 
 
@@ -31,6 +32,7 @@ async def check_user_exists(
                 status_code=fa.status.HTTP_409_CONFLICT,
                 detail='Login already exists')
 
+
 def validate_new_password(
     data: sh.RegistrationData | sh.LoginData
 ) -> None:
@@ -40,6 +42,7 @@ def validate_new_password(
             raise fa.HTTPException(
                 status_code=fa.status.HTTP_409_CONFLICT,
                 detail=reason)
+
 
 async def create_new_user(
     registration_data: sh.RegistrationData,
@@ -53,6 +56,7 @@ async def create_new_user(
     await db_session.commit()
     return await dq.user_by_login(db_session, registration_data.login)
 
+
 async def user_by_id(
     db_session: con.AsyncSession,
     id: int,
@@ -64,6 +68,7 @@ async def user_by_id(
             status_code=fa.status.HTTP_404_NOT_FOUND,
             detail=f'No {"active " if active else ""}users with such id')
     return user
+
 
 @canceled_task
 async def user_with_permissions_by_id(
@@ -77,6 +82,7 @@ async def user_with_permissions_by_id(
             status_code=fa.status.HTTP_404_NOT_FOUND,
             detail=f'No {"active " if active else ""}users with such id')
     return user
+
 
 @canceled_task
 async def permissions_by_names(

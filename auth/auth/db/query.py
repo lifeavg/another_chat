@@ -53,7 +53,8 @@ async def user_with_permissions(
         return (await session.execute(select(md.User)
                                       .where(*conditions)
                                       .options(selectinload(md.User.permissions))
-                                      )).scalars().one()
+                                      )
+                ).scalars().one()
     except NoResultFound:
         return None
 
@@ -110,11 +111,12 @@ async def delete_user(
 ) -> int | None:
     try:
         return (await session.execute(delete(md.User)
-                                    .where(md.User.id == id)
-                                    .returning(md.User.id))
+                                      .where(md.User.id == id)
+                                      .returning(md.User.id))
                 ).scalars().one()
     except NoResultFound:
         return None
+
 
 async def login_limit_by_fingerprint(
     session: AsyncSession,
