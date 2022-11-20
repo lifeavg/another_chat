@@ -144,7 +144,11 @@ async def update_user_data(
 async def delete_user(
     id: int,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
-) -> int | None:
+) -> int:
     deleted_id = await dq.delete_user(db_session, id)
+    if deleted_id is None:
+        raise fs.HTTPException(
+            status_code=fs.status.HTTP_404_NOT_FOUND,
+            detail=f'No user with such id')
     await db_session.commit()
     return deleted_id
