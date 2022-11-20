@@ -13,7 +13,7 @@ users_router = fs.APIRouter(prefix='/users')
 
 @users_router.get('/{id}')
 async def user_data(
-    id: int,
+    id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> sh.UserData:
     user = await b.user_by_id(db_session, id, True)
@@ -26,7 +26,7 @@ async def user_data(
 
 @users_router.get('/{id}/permissions')
 async def user_permissions(
-    id: int,
+    id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> list[sh.PermissionName]:
     return await dq.user_permissions(db_session, id)
@@ -34,8 +34,8 @@ async def user_permissions(
 
 @users_router.post('/{id}/permissions/add')
 async def add_user_permissions(
-    id: int,
     permissions: list[sh.PermissionName],
+    id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
     perm_set: set[sh.PermissionName] = set(permissions)
@@ -60,8 +60,8 @@ async def add_user_permissions(
 
 @users_router.post('/{id}/permissions/remove')
 async def remove_user_permissions(
-    id: int,
     permissions: list[sh.PermissionName],
+    id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
     perm_set: set[sh.PermissionName] = set(permissions)
@@ -80,10 +80,10 @@ async def remove_user_permissions(
 
 @users_router.get('/{id}/login_sessions')
 async def user_login_sessions(
-    id: int,
+    id: int = fs.Path(ge=0),
     active: bool | None = None,
-    limit: int = 10,
-    offset: int = 0,
+    limit: int = fs.Query(default=10, gt=1, le=100),
+    offset: int = fs.Query(default=0, ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> list[sh.LoginSession]:
     sessions = await dq.user_login_sessions(db_session, id, limit, offset, active)
@@ -98,7 +98,7 @@ async def user_login_sessions(
 
 @users_router.put('/{id}')
 async def update_user_state(
-    id: int,
+    id: int = fs.Path(ge=0),
     confirmed: bool | None = None,
     active: bool | None = None,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
@@ -122,7 +122,7 @@ async def update_user_state(
 @users_router.post('/{id}/update')
 async def update_user_data(
     login_data: sh.LoginData,
-    id: int,
+    id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
     user = await b.user_by_id(db_session, id)
@@ -142,7 +142,7 @@ async def update_user_data(
 
 @users_router.delete('/{id}', status_code=204)
 async def delete_user(
-    id: int,
+    id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> int:
     deleted_id = await dq.delete_user(db_session, id)
