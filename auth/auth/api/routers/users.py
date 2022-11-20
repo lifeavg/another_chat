@@ -3,6 +3,7 @@ import auth.db.connection as con
 import auth.db.query as dq
 import auth.api.schemas as sh
 import auth.api.base as b
+import auth.security as sec
 import asyncio
 
 
@@ -99,12 +100,41 @@ async def update_user_state(
     active: bool | None = None,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
-    pass
+    if confirmed is None and active is None:
+        raise fs.HTTPException(
+            status_code=fs.status.HTTP_400_BAD_REQUEST,
+            detail='Specify at least one parameter')
+    user = await b.user_by_id(db_session, id)
+    changed = False
+    if confirmed is not None:
+        user.confirmed = confirmed  # type: ignore
+        changed = True
+    if active is not None:
+        user.active = active  # type: ignore
+        changed = True
+    if changed:
+        await db_session.commit()
 
 
 @users_router.post('/{id}/update')
-async def update_user_data(login: sh.LoginData) -> None:
-    pass
+async def update_user_data(
+    login_data: sh.LoginData,
+    id: int,
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> None:
+    user = await b.user_by_id(db_session, id)
+    changed = False
+    if login_data.login is not None:
+        if user.login != login_data.login:
+            await b.check_user_exists(login_data, db_session)
+            user.login = login_data.login  # type: ignore
+            changed = True
+    if login_data.password is not None:
+        b.validate_new_password(login_data)
+        user.password = sec.password_hash(login_data.password)  # type: ignore
+        changed = True
+    if changed:
+        await db_session.commit()
 
 
 @users_router.delete('/{id}')

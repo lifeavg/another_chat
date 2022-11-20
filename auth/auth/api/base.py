@@ -21,21 +21,25 @@ def canceled_task(function):
 
 
 async def check_user_exists(
-    registration_data: sh.RegistrationData,
+    data: sh.RegistrationData | sh.LoginData,
     db_session: con.AsyncSession
 ) -> None:
-    existing_user = await dq.user_by_login(db_session, registration_data.login)
-    if existing_user:
-        raise fa.HTTPException(
-            status_code=fa.status.HTTP_409_CONFLICT,
-            detail='Login already exists')
+    if data.login is not None:
+        existing_user = await dq.user_by_login(db_session, data.login)
+        if existing_user:
+            raise fa.HTTPException(
+                status_code=fa.status.HTTP_409_CONFLICT,
+                detail='Login already exists')
 
-def validate_new_password(registration_data: sh.RegistrationData) -> None:
-    valid, reason = sec.new_password_validator(registration_data.password)
-    if not valid:
-        raise fa.HTTPException(
-            status_code=fa.status.HTTP_409_CONFLICT,
-            detail=reason)
+def validate_new_password(
+    data: sh.RegistrationData | sh.LoginData
+) -> None:
+    if data.password is not None:
+        valid, reason = sec.new_password_validator(data.password)
+        if not valid:
+            raise fa.HTTPException(
+                status_code=fa.status.HTTP_409_CONFLICT,
+                detail=reason)
 
 async def create_new_user(
     registration_data: sh.RegistrationData,

@@ -30,8 +30,8 @@ class RegistrationData:
 
 @dataclass
 class LoginData:
-    login: str
-    password: str
+    login: str | None
+    password: str | None
 
 @dataclass
 class UserData:
