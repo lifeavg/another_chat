@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
 
@@ -25,81 +25,81 @@ class TokenType(Enum):
     REFRESH = 'REFRESH'
 
 
-@dataclass
-class RegistrationData:
-    external_id: int
-    login: str
-    password: str
+
+class RegistrationData(BaseModel):
+    external_id: int = Field(ge=0)
+    login: str = Field(max_length=32)
+    password: str = Field(max_length=128)
 
 
-@dataclass
-class LoginData:
-    login: str | None
-    password: str | None
+
+class LoginData(BaseModel):
+    login: str | None = Field(max_length=32)
+    password: str | None = Field(max_length=128)
 
 
-@dataclass
-class UserData:
-    id: int
-    external_id: int
-    login: str
+
+class UserData(BaseModel):
+    id: int = Field(ge=0)
+    external_id: int = Field(ge=0)
+    login: str = Field(max_length=32)
     confirmed: bool
     created_timestamp: datetime
 
 
-@dataclass
-class AccessSession:
-    id: int
-    login_session_id: int
+
+class AccessSession(BaseModel):
+    id: int = Field(ge=0)
+    login_session_id: int = Field(ge=0)
     start: datetime
     end: datetime
     stopped: bool
 
 
-@dataclass
-class LoginSession:
-    id: int
-    user_id: int
+
+class LoginSession(BaseModel):
+    id: int = Field(ge=0)
+    user_id: int = Field(ge=0)
     start: datetime
     end: datetime
     stopped: bool
 
 
-@dataclass
-class Permission:
-    id: int
-    name: str
-    expiration_min: int
-    service_id: int
+
+class Permission(BaseModel):
+    id: int = Field(ge=0)
+    name: str = Field(max_length=128)
+    expiration_min: int = Field(ge=1)
+    service_id: int = Field(ge=0)
 
 
 PermissionName = str
 
 
-@dataclass
-class Service:
-    id: int
-    name: str
-    key: str
+
+class Service(BaseModel):
+    id: int = Field(ge=0)
+    name: str = Field(max_length=128)
+    key: str = Field(max_length=256)
     permissions: list[PermissionName]
 
 
-@dataclass
-class AccessTokenData:
-    jti: int
-    sub: int
+
+class AccessTokenData(BaseModel):
+    jti: int = Field(ge=0)
+    sub: int = Field(ge=0)
     pms: list[PermissionName]
     exp: datetime
 
 
-@dataclass
-class SessionTokenData:
-    jti: int
-    sub: int
+
+class SessionTokenData(BaseModel):
+    jti: int = Field(ge=0)
+    sub: int = Field(ge=0)
     exp: datetime
 
 
-@dataclass
-class Token:
-    token: str
+
+class Token(BaseModel):
+    token: str = Field(max_length=512)
     type: TokenType
