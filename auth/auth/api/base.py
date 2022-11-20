@@ -1,10 +1,23 @@
+import functools
 import fastapi  as fa
+import asyncio
 
 import auth.db.connection as con
 import auth.db.query as dq
 import auth.db.models as md
 import auth.api.schemas as sh
 import auth.security as sec
+
+
+def canceled_task(function):
+    # https://plainenglish.io/blog/how-to-manage-exceptions-when-waiting-on-multiple-asyncio
+    @functools.wraps(function)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await function(*args, **kwargs)
+        except asyncio.CancelledError:
+            pass
+    return wrapper
 
 
 async def check_user_exists(
@@ -48,6 +61,7 @@ async def user_by_id(
             detail=f'No {"active " if active else ""}users with such id')
     return user
 
+@canceled_task
 async def user_with_permissions_by_id(
     db_session: con.AsyncSession,
     id: int,
@@ -60,6 +74,7 @@ async def user_with_permissions_by_id(
             detail=f'No {"active " if active else ""}users with such id')
     return user
 
+@canceled_task
 async def permissions_by_names(
     permissions: set[sh.PermissionName],
     db_session: con.AsyncSession
