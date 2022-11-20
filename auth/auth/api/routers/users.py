@@ -8,10 +8,10 @@ import auth.db.connection as con
 import auth.db.query as dq
 import auth.security as sec
 
-users_router = fs.APIRouter(prefix='/users')
+users_router = fs.APIRouter(prefix='/users', tags=["user"])
 
 
-@users_router.get('/{id}')
+@users_router.get('/{id}', response_model=sh.UserData)
 async def user_data(
     id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
@@ -24,7 +24,7 @@ async def user_data(
                        created_timestamp=user.created_timestamp)  # type: ignore
 
 
-@users_router.get('/{id}/permissions')
+@users_router.get('/{id}/permissions', response_model=list[sh.PermissionName])
 async def user_permissions(
     id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
@@ -32,7 +32,7 @@ async def user_permissions(
     return await dq.user_permissions(db_session, id)
 
 
-@users_router.post('/{id}/permissions/add')
+@users_router.post('/{id}/permissions/add', response_class=fs.Response)
 async def add_user_permissions(
     permissions: list[sh.PermissionName],
     id: int = fs.Path(ge=0),
@@ -58,7 +58,7 @@ async def add_user_permissions(
         await db_session.commit()
 
 
-@users_router.post('/{id}/permissions/remove')
+@users_router.post('/{id}/permissions/remove', response_class=fs.Response)
 async def remove_user_permissions(
     permissions: list[sh.PermissionName],
     id: int = fs.Path(ge=0),
@@ -78,7 +78,7 @@ async def remove_user_permissions(
     await db_session.commit()
 
 
-@users_router.get('/{id}/login_sessions')
+@users_router.get('/{id}/login_sessions', response_model=list[sh.LoginSession])
 async def user_login_sessions(
     id: int = fs.Path(ge=0),
     active: bool | None = None,
@@ -96,7 +96,7 @@ async def user_login_sessions(
         for s in sessions]
 
 
-@users_router.put('/{id}')
+@users_router.put('/{id}', response_class=fs.Response)
 async def update_user_state(
     id: int = fs.Path(ge=0),
     confirmed: bool | None = None,
@@ -119,7 +119,7 @@ async def update_user_state(
         await db_session.commit()
 
 
-@users_router.post('/{id}/update')
+@users_router.post('/{id}/update', response_class=fs.Response)
 async def update_user_data(
     login_data: sh.LoginData,
     id: int = fs.Path(ge=0),
