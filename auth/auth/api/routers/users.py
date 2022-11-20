@@ -140,7 +140,7 @@ async def update_user_data(
         await db_session.commit()
 
 
-@users_router.delete('/{id}')
+@users_router.delete('/{id}', status_code=204)
 async def delete_user(
     id: int,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)

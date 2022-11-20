@@ -13,7 +13,7 @@ import auth.security as sec
 sign_router = fs.APIRouter()
 
 
-@sign_router.post('/signup')
+@sign_router.post('/signup', status_code=201)
 async def signup(
     registration_data: sh.RegistrationData,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
