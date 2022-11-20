@@ -138,5 +138,10 @@ async def update_user_data(
 
 
 @users_router.delete('/{id}')
-async def delete_user(id: int) -> None:
-    pass
+async def delete_user(
+    id: int,
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> int | None:
+    deleted_id = await dq.delete_user(db_session, id)
+    await db_session.commit()
+    return deleted_id
