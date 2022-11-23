@@ -25,18 +25,21 @@ class TokenType(Enum):
     REFRESH = 'REFRESH'
 
 
-
 class RegistrationData(BaseModel):
     external_id: int = Field(ge=0)
     login: str = Field(max_length=32)
     password: str = Field(max_length=128)
 
+    class Config:
+        orm_mode = True
 
 
 class LoginData(BaseModel):
     login: str | None = Field(max_length=32)
     password: str | None = Field(max_length=128)
 
+    class Config:
+        orm_mode = True
 
 
 class UserData(BaseModel):
@@ -46,6 +49,8 @@ class UserData(BaseModel):
     confirmed: bool
     created_timestamp: datetime
 
+    class Config:
+        orm_mode = True
 
 
 class AccessSession(BaseModel):
@@ -55,6 +60,8 @@ class AccessSession(BaseModel):
     end: datetime
     stopped: bool
 
+    class Config:
+        orm_mode = True
 
 
 class LoginSession(BaseModel):
@@ -64,6 +71,8 @@ class LoginSession(BaseModel):
     end: datetime
     stopped: bool
 
+    class Config:
+        orm_mode = True
 
 
 class Permission(BaseModel):
@@ -72,9 +81,11 @@ class Permission(BaseModel):
     expiration_min: int = Field(ge=1)
     service_id: int = Field(ge=0)
 
+    class Config:
+        orm_mode = True
+
 
 PermissionName = str
-
 
 
 class Service(BaseModel):
@@ -83,6 +94,8 @@ class Service(BaseModel):
     key: str = Field(max_length=256)
     permissions: list[PermissionName]
 
+    class Config:
+        orm_mode = True
 
 
 class AccessTokenData(BaseModel):
@@ -91,6 +104,8 @@ class AccessTokenData(BaseModel):
     pms: list[PermissionName]
     exp: datetime
 
+    class Config:
+        orm_mode = True
 
 
 class SessionTokenData(BaseModel):
@@ -98,8 +113,13 @@ class SessionTokenData(BaseModel):
     sub: int = Field(ge=0)
     exp: datetime
 
+    class Config:
+        orm_mode = True
 
 
 class Token(BaseModel):
     token: str = Field(max_length=512)
     type: TokenType
+
+    class Config:
+        orm_mode = True

@@ -16,12 +16,7 @@ async def user_data(
     id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> sh.UserData:
-    user = await b.user_by_id(db_session, id, True)
-    return sh.UserData(id=user.id,  # type: ignore
-                       external_id=user.external_id,  # type: ignore
-                       login=user.login,  # type: ignore
-                       confirmed=user.confirmed,  # type: ignore
-                       created_timestamp=user.created_timestamp)  # type: ignore
+    return await b.user_by_id(db_session, id, True)
 
 
 @users_router.get('/{id}/permissions', response_model=list[sh.PermissionName])
@@ -86,14 +81,7 @@ async def user_login_sessions(
     offset: int = fs.Query(default=0, ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> list[sh.LoginSession]:
-    sessions = await dq.user_login_sessions(db_session, id, limit, offset, active)
-    return [sh.LoginSession(
-        id=s.id,  # type: ignore
-        user_id=s.user_id,  # type: ignore
-        start=s.start,  # type: ignore
-        end=s.end,  # type: ignore
-        stopped=s.stopped)  # type: ignore
-        for s in sessions]
+    return await dq.user_login_sessions(db_session, id, limit, offset, active)  # type: ignore
 
 
 @users_router.put('/{id}', response_class=fs.Response)
