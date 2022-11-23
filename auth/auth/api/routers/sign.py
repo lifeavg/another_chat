@@ -10,7 +10,7 @@ import auth.db.models as md
 import auth.db.query as dq
 import auth.security as sec
 
-sign_router = fs.APIRouter()
+sign_router = fs.APIRouter(tags=['user_identification'])
 
 
 @sign_router.post('/signup', status_code=201)

@@ -2,7 +2,7 @@ import fastapi as fs
 
 import auth.api.schemas as sh
 
-permissions_router = fs.APIRouter(prefix='/permissions')
+permissions_router = fs.APIRouter(prefix='/permissions', tags=['permissions'])
 
 
 @permissions_router.get('/{permission_name}')

@@ -2,7 +2,7 @@ import fastapi as fs
 
 import auth.api.schemas as sh
 
-login_sessions_router = fs.APIRouter(prefix='/login_sessions')
+login_sessions_router = fs.APIRouter(prefix='/login_sessions', tags=['login_sessions'])
 
 
 @login_sessions_router.get('/{id}')

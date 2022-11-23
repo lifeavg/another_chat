@@ -2,7 +2,7 @@ import fastapi as fs
 
 import auth.api.schemas as sh
 
-services_router = fs.APIRouter(prefix='/services')
+services_router = fs.APIRouter(prefix='/services', tags=['services'])
 
 
 @services_router.get('/{service_name}')

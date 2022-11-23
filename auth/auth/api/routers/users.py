@@ -8,7 +8,7 @@ import auth.db.connection as con
 import auth.db.query as dq
 import auth.security as sec
 
-users_router = fs.APIRouter(prefix='/users', tags=["user"])
+users_router = fs.APIRouter(prefix='/users', tags=['user'])
 
 
 @users_router.get('/{id}', response_model=sh.UserData)
