@@ -34,23 +34,17 @@ async def add_user_permissions(
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
     perm_set: set[sh.PermissionName] = set(permissions)
-    tasks = (asyncio.create_task(b.user_with_permissions_by_id(db_session, id)),
-             asyncio.create_task(b.permissions_by_names(perm_set, db_session)))
-    try:
-        user, perms = await asyncio.gather(*tasks)
-    except Exception as exception:
-        for task in tasks:
-            task.cancel()
-        raise exception
-    else:
-        intersection = set(
-            p.name for p in user.permissions).intersection(perm_set)
-        if intersection:
-            raise fs.HTTPException(
-                status_code=fs.status.HTTP_409_CONFLICT,
-                detail=list(intersection))
-        user.permissions.append(*perms)
-        await db_session.commit()
+    user, perms = await asyncio.gather(
+        b.user_with_permissions_by_id(db_session, id),
+        b.permissions_by_names(perm_set, db_session))
+    intersection = set(
+        p.name for p in user.permissions).intersection(perm_set)
+    if intersection:
+        raise fs.HTTPException(
+            status_code=fs.status.HTTP_409_CONFLICT,
+            detail=list(intersection))
+    user.permissions.append(*perms)
+    await db_session.commit()
 
 
 @users_router.post('/{id}/permissions/remove', response_class=fs.Response)
@@ -60,9 +54,9 @@ async def remove_user_permissions(
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
     perm_set: set[sh.PermissionName] = set(permissions)
-    tasks = (b.user_with_permissions_by_id(db_session, id),
-             b.permissions_by_names(perm_set, db_session))
-    user, perms = await asyncio.gather(*tasks)
+    user, perms = await asyncio.gather(
+        b.user_with_permissions_by_id(db_session, id),
+        b.permissions_by_names(perm_set, db_session))
     intersection_diff = perm_set - \
         set(p.name for p in user.permissions).intersection(perm_set)
     if intersection_diff:
