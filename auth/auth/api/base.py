@@ -119,3 +119,15 @@ def validate_new_key(
         raise fa.HTTPException(
             status_code=fa.status.HTTP_409_CONFLICT,
             detail=reason)
+
+
+async def permission_by_name(
+    db_session: con.AsyncSession,
+    name: str,
+) -> md.Permission:
+    permission = await dq.permission_by_name(db_session, name)
+    if not permission:
+        raise fa.HTTPException(
+            status_code=fa.status.HTTP_404_NOT_FOUND,
+            detail=f'No permissions with such name')
+    return permission

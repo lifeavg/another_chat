@@ -167,3 +167,28 @@ async def delete_service(
                 ).scalars().one()
     except NoResultFound:
         return None
+
+
+async def permission_by_name(
+    session: con.AsyncSession,
+    name: str
+) -> md.Permission | None:
+    try:
+        return (await session.execute(select(md.Permission)
+                                      .where(md.Permission.name == name))
+                ).scalars().one()
+    except NoResultFound:
+        return None
+
+
+async def delete_permission(
+    session: con.AsyncSession,
+    name: str
+) -> str | None:
+    try:
+        return (await session.execute(delete(md.Permission)
+                                      .where(md.Permission.name == name)
+                                      .returning(md.Permission.name))
+                ).scalars().one()
+    except NoResultFound:
+        return None
