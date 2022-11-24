@@ -96,3 +96,26 @@ async def permissions_by_names(
             status_code=fa.status.HTTP_404_NOT_FOUND,
             detail=list(diff))
     return perms
+
+
+@canceled_task
+async def service_by_name(
+    db_session: con.AsyncSession,
+    name: str,
+) -> md.Service:
+    service = await dq.service_by_name(db_session, name)
+    if not service:
+        raise fa.HTTPException(
+            status_code=fa.status.HTTP_404_NOT_FOUND,
+            detail=f'No services with such name')
+    return service
+
+
+def validate_new_key(
+    key: str
+) -> None:
+    valid, reason = sec.new_key_validator(key)
+    if not valid:
+        raise fa.HTTPException(
+            status_code=fa.status.HTTP_409_CONFLICT,
+            detail=reason)

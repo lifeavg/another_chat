@@ -132,3 +132,26 @@ async def login_limit_by_fingerprint(
                          datetime.utcnow() - timedelta(minutes=delay_minutes)))
                  .order_by(md.LoginAttempt.date_time.desc()))
     return (await session.execute(statement)).scalars().all()
+
+
+async def service_by_name(
+    session: con.AsyncSession,
+    name: str
+) -> md.Service | None:
+    try:
+        return (await session.execute(select(md.Service)
+                                      .where(md.Service.name == name))
+                ).scalars().one()
+    except NoResultFound:
+        return None
+
+
+async def service_permissions(
+    session: AsyncSession,
+    name: str
+) -> list[md.Permission]:
+    statement = (select(md.Permission, md.Service)
+                 .join(md.Service.permissions)
+                 .where(md.Service.name == name))
+    return list((await session.execute(statement)).scalars().all())
+    

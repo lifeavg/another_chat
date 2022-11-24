@@ -1,42 +1,74 @@
 import fastapi as fs
+import asyncio
 
 import auth.api.schemas as sh
+import auth.db.connection as con
+import auth.db.query as dq
+import auth.db.models as md
+import auth.api.base as b
+
 
 services_router = fs.APIRouter(prefix='/services', tags=['services'])
 
 
-@services_router.get('/{service_name}')
+@services_router.post('/', response_class=fs.Response)
+async def create_service(
+    new_service: sh.Service,
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> None:
+    if await b.service_by_name(db_session, new_service.name):
+        raise fs.HTTPException(
+            status_code=fs.status.HTTP_409_CONFLICT,
+            detail=f'Service with name {new_service.name} already exists')
+    b.validate_new_key(new_service.key)
+    db_session.add(md.Service(name=new_service.name, key=new_service.key))
+    await db_session.commit()
+
+
+@services_router.get('/{service_name}', response_model=sh.Service)
 async def service_data(
-    name: str
-) -> sh.Service:  # type: ignore
-    pass
+    service_name: str = fs.Path(max_length=128),
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> sh.Service:
+    return await b.service_by_name(db_session, service_name)
 
 
-@services_router.post('/{service_name}/permissions')
+@services_router.post('/{service_name}/permissions', response_class=fs.Response)
 async def add_service_permissions(
-    name: str
-) -> list[sh.PermissionName]:  # type: ignore
-    pass
+    new_permission: sh.Permission,
+    service_name: str = fs.Path(max_length=128),
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> None:
+    service, permissions = await asyncio.gather(
+        b.service_by_name(db_session, service_name),
+        dq.permissions_by_names(db_session, {new_permission.name}))
+    if permissions:
+        raise fs.HTTPException(
+            status_code=fs.status.HTTP_409_CONFLICT,
+            detail=f'Permission with name {new_permission.name} already exists')
+    db_session.add(md.Permission(
+        name=new_permission.name,
+        service_id=service.id,
+        expiration_min=new_permission.expiration_min))
+    await db_session.commit()
+    
 
 
-@services_router.get('/{service_name}/permissions')
+@services_router.get('/{service_name}/permissions', response_model=list[sh.Permission])
 async def service_permissions(
-    name: str
-) -> list[sh.PermissionName]:  # type: ignore
-    pass
+    service_name: str = fs.Path(max_length=128),
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> list[md.Permission]:
+    return await dq.service_permissions(db_session, service_name)
 
 
-@services_router.delete('/{service_name}/permissions/{permission_name}')
-async def delete_service_permission(
-    service_name: str,
-    permission_name: str
-) -> None:
-    pass
-
-
-@services_router.put('/{service_name}')
+@services_router.put('/{service_name}', response_class=fs.Response)
 async def update_service_key(
-    service_name: str,
-    key: str
+    key: sh.Key,
+    service_name: str = fs.Path(max_length=128),
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> None:
-    pass
+    service = await b.service_by_name(db_session, service_name)
+    b.validate_new_key(key.key)
+    service.key = key.key  # type: ignore
+    await db_session.commit()

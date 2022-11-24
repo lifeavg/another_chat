@@ -45,3 +45,8 @@ async def login_limit(session: dq.AsyncSession,
 def new_password_validator(password: str) -> tuple[bool, str]:
     # TODO
     return True, 'OK'
+
+
+def new_key_validator(password: str) -> tuple[bool, str]:
+    # TODO
+    return True, 'OK'

@@ -76,10 +76,8 @@ class LoginSession(BaseModel):
 
 
 class Permission(BaseModel):
-    id: int = Field(ge=0)
     name: str = Field(max_length=128)
     expiration_min: int = Field(ge=1)
-    service_id: int = Field(ge=0)
 
     class Config:
         orm_mode = True
@@ -87,12 +85,9 @@ class Permission(BaseModel):
 
 PermissionName = str
 
-
 class Service(BaseModel):
-    id: int = Field(ge=0)
     name: str = Field(max_length=128)
     key: str = Field(max_length=256)
-    permissions: list[PermissionName]
 
     class Config:
         orm_mode = True
@@ -104,22 +99,17 @@ class AccessTokenData(BaseModel):
     pms: list[PermissionName]
     exp: datetime
 
-    class Config:
-        orm_mode = True
-
 
 class SessionTokenData(BaseModel):
     jti: int = Field(ge=0)
     sub: int = Field(ge=0)
     exp: datetime
 
-    class Config:
-        orm_mode = True
-
 
 class Token(BaseModel):
     token: str = Field(max_length=512)
     type: TokenType
 
-    class Config:
-        orm_mode = True
+
+class Key(BaseModel):
+    key: str = Field(max_length=256)
