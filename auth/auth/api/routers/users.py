@@ -5,6 +5,7 @@ import fastapi as fs
 import auth.api.base as b
 import auth.api.schemas as sh
 import auth.db.connection as con
+import auth.db.models as md
 import auth.db.query as dq
 import auth.security as sec
 
@@ -74,8 +75,8 @@ async def user_login_sessions(
     limit: int = fs.Query(default=10, gt=1, le=100),
     offset: int = fs.Query(default=0, ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
-) -> list[sh.LoginSession]:
-    return await dq.user_login_sessions(db_session, id, limit, offset, active)  # type: ignore
+) -> list[md.LoginSession]:
+    return await dq.user_login_sessions(db_session, id, limit, offset, active)
 
 
 @users_router.put('/{id}', response_class=fs.Response)
@@ -126,11 +127,10 @@ async def update_user_data(
 async def delete_user(
     id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
-) -> int:
+) -> None:
     deleted_id = await dq.delete_user(db_session, id)
     if deleted_id is None:
         raise fs.HTTPException(
             status_code=fs.status.HTTP_404_NOT_FOUND,
             detail=f'No user with such id')
     await db_session.commit()
-    return deleted_id
