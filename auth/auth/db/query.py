@@ -154,4 +154,16 @@ async def service_permissions(
                  .join(md.Service.permissions)
                  .where(md.Service.name == name))
     return list((await session.execute(statement)).scalars().all())
-    
+
+
+async def delete_service(
+    session: con.AsyncSession,
+    name: str
+) -> str | None:
+    try:
+        return (await session.execute(delete(md.Service)
+                                      .where(md.Service.name == name)
+                                      .returning(md.Service.name))
+                ).scalars().one()
+    except NoResultFound:
+        return None

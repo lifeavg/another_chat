@@ -72,3 +72,16 @@ async def update_service_key(
     b.validate_new_key(key.key)
     service.key = key.key  # type: ignore
     await db_session.commit()
+    
+
+@services_router.delete('/{service_name}', status_code=204)
+async def delete_service(
+    service_name: str = fs.Path(max_length=128),
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> None:
+    deleted_service = await dq.delete_service(db_session, service_name)
+    if not deleted_service:
+        raise fs.HTTPException(
+            status_code=fs.status.HTTP_404_NOT_FOUND,
+            detail=f'No services with such name')
+    await db_session.commit()
