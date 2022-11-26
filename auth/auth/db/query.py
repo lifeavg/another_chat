@@ -192,3 +192,36 @@ async def delete_permission(
                 ).scalars().one()
     except NoResultFound:
         return None
+
+
+async def login_session_by_id(
+    session: AsyncSession,
+    id: int
+) -> md.LoginSession | None:
+    try:
+        return (await session.execute(select(md.LoginSession).where(md.LoginSession.id == id))
+                ).scalars().one()
+    except NoResultFound:
+        return None
+
+
+async def login_session_access_sessions(
+    session: AsyncSession,
+    login_session_id: int,
+    active: bool | None = None
+) -> list[md.AccessSession]:
+    conditions = [(md.AccessSession.login_session_id == login_session_id), ]
+    match active:
+        case True:
+            conditions.append((md.AccessSession.stopped == (not active)))
+            conditions.append((md.AccessSession.end > func.now_utc()))
+        case False:
+            conditions.append(
+                or_(md.AccessSession.stopped == (not active),
+                    md.AccessSession.end > func.now_utc())
+            )
+        case _:
+            pass
+    return list((await session.execute(select(md.AccessSession)
+                                       .where(*conditions))
+            ).scalars().all())
