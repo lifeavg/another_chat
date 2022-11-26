@@ -136,10 +136,22 @@ async def permission_by_name(
 async def login_session_by_id(
     db_session: con.AsyncSession,
     id: int
-) -> md.User:
+) -> md.LoginSession:
     login_session = await dq.login_session_by_id(db_session, id)
     if not login_session:
         raise fa.HTTPException(
             status_code=fa.status.HTTP_404_NOT_FOUND,
             detail=f'No login sessions with such id')
     return login_session
+
+
+async def access_session_by_id(
+    db_session: con.AsyncSession,
+    id: int
+) -> md.AccessSession:
+    access_session = await dq.access_session_by_id(db_session, id)
+    if not access_session:
+        raise fa.HTTPException(
+            status_code=fa.status.HTTP_404_NOT_FOUND,
+            detail=f'No access sessions with such id')
+    return access_session

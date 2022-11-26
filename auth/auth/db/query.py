@@ -59,11 +59,21 @@ async def user_with_permissions(
         return None
 
 
-async def user_permissions(
+async def user_permissions_names(
     session: AsyncSession,
     id: int
 ) -> list[sh.PermissionName]:
     statement = (select(md.Permission.name, md.User)
+                 .join(md.User.permissions)
+                 .where(md.User.id == id))
+    return list((await session.execute(statement)).scalars().all())
+
+
+async def user_permissions(
+    session: AsyncSession,
+    id: int
+) -> list[sh.Permission]:
+    statement = (select(md.Permission, md.User)
                  .join(md.User.permissions)
                  .where(md.User.id == id))
     return list((await session.execute(statement)).scalars().all())
@@ -213,11 +223,11 @@ async def login_session_access_sessions(
     conditions = [(md.AccessSession.login_session_id == login_session_id), ]
     match active:
         case True:
-            conditions.append((md.AccessSession.stopped == (not active)))
+            conditions.append((md.AccessSession.stopped == False))
             conditions.append((md.AccessSession.end > func.now_utc()))
         case False:
             conditions.append(
-                or_(md.AccessSession.stopped == (not active),
+                or_(md.AccessSession.stopped == True,
                     md.AccessSession.end > func.now_utc())
             )
         case _:
@@ -225,3 +235,14 @@ async def login_session_access_sessions(
     return list((await session.execute(select(md.AccessSession)
                                        .where(*conditions))
             ).scalars().all())
+
+
+async def access_session_by_id(
+    session: AsyncSession,
+    id: int
+) -> md.AccessSession | None:
+    try:
+        return (await session.execute(select(md.AccessSession).where(md.AccessSession.id == id))
+                ).scalars().one()
+    except NoResultFound:
+        return None

@@ -25,7 +25,7 @@ async def user_permissions(
     id: int = fs.Path(ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
 ) -> list[sh.PermissionName]:
-    return await dq.user_permissions(db_session, id)
+    return await dq.user_permissions_names(db_session, id)
 
 
 @users_router.post('/{id}/permissions/add', response_class=fs.Response)
