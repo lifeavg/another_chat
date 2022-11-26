@@ -77,7 +77,7 @@ async def signin(
     db_session.add(session)
     await db_session.commit()
     token = sec.create_access_token(data=dcl.asdict(sh.SessionTokenData(
-        jti=session.id, sub=user.external_id, exp=token_expires)))  # type: ignore
+        jti=session.id, sub=user.id, exp=token_expires)))  # type: ignore
     return sh.Token(token=token, type=sh.TokenType.REFRESH)
 
 
@@ -90,3 +90,4 @@ async def signout(
     for session in login_sessions:
         session.stopped = True  # type: ignore
         session.end = datetime.utcnow()  # type: ignore
+    await db_session.commit()
