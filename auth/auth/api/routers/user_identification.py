@@ -13,28 +13,23 @@ import auth.security as sec
 sign_router = fs.APIRouter(tags=['user_identification'])
 
 
-@sign_router.post('/signup', status_code=201)
+@sign_router.post('/signup', status_code=201, response_model=sh.UserData)
 async def signup(
     registration_data: sh.RegistrationData,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
-) -> sh.UserData:
+) -> md.User:
     await b.check_user_exists(registration_data, db_session)
     b.validate_new_password(registration_data)
-    user = await b.create_new_user(registration_data, db_session)
-    return sh.UserData(id=user.id,  # type: ignore
-                       external_id=user.external_id,  # type: ignore
-                       login=user.login,  # type: ignore
-                       confirmed=user.confirmed,  # type: ignore
-                       created_timestamp=user.created_timestamp)  # type: ignore
+    return await b.create_new_user(registration_data, db_session)
 
 
-@sign_router.post('/signin')
-async def signin(login_data: sh.LoginData,
-                 request: fs.Request,
-                 db_session: con.AsyncSession = fs.Depends(con.get_db_session)
-                 ) -> sh.Token:
-    # type: ignore
-    limit_delay = await sec.login_limit(db_session, request.client.host)
+@sign_router.post('/signin', response_model=sh.Token)
+async def signin(
+    login_data: sh.LoginData,
+    request: fs.Request,
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> sh.Token:
+    limit_delay = await sec.login_limit(db_session, request.client.host)  # type: ignore
     if limit_delay:
         login_attempt = md.LoginAttempt(
             login_data_id=None,
@@ -45,7 +40,7 @@ async def signin(login_data: sh.LoginData,
         await db_session.commit()
         raise fs.HTTPException(status_code=fs.status.HTTP_429_TOO_MANY_REQUESTS,
                                detail='Login attempts limit reached',)
-    user = await dq.user_by_login(db_session, login_data.login)
+    user = await dq.user_by_login(db_session, login_data. login)  # type: ignore
     if not user:
         login_attempt = md.LoginAttempt(
             login_data_id=None,
@@ -86,6 +81,12 @@ async def signin(login_data: sh.LoginData,
     return sh.Token(token=token, type=sh.TokenType.REFRESH)
 
 
-@sign_router.post('/signout')
-async def signout():
-    pass
+@sign_router.post('/signout', response_class=fs.Response)
+async def signout(
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+) -> None:
+    session_token = sh.SessionTokenData(jti=1, sub=1, exp = datetime.now())
+    login_sessions = await dq.user_login_sessions(db_session, session_token.sub, 200, 0, True)
+    for session in login_sessions:
+        session.stopped = True  # type: ignore
+        session.end = datetime.utcnow()  # type: ignore

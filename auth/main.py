@@ -4,7 +4,7 @@ from auth.api.routers.access_sessions import access_sessions_router
 from auth.api.routers.login_sessions import login_sessions_router
 from auth.api.routers.permissions import permissions_router
 from auth.api.routers.services import services_router
-from auth.api.routers.sign import sign_router
+from auth.api.routers.user_identification import sign_router
 from auth.api.routers.users import users_router
 
 app = fs.FastAPI()
