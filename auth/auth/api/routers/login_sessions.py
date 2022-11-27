@@ -1,12 +1,13 @@
 import fastapi as fs
 
+import auth.api.base as b
 import auth.api.schemas as sh
 import auth.db.connection as con
-import auth.api.base as b
-import auth.db.query as dq
 import auth.db.models as md
+import auth.db.query as dq
 
-login_sessions_router = fs.APIRouter(prefix='/login_sessions', tags=['login_sessions'])
+login_sessions_router = fs.APIRouter(
+    prefix='/login_sessions', tags=['login_sessions'])
 
 
 @login_sessions_router.get('/{id}', response_model=sh.LoginSession)

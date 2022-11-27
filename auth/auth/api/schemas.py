@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
+
+from pydantic import BaseModel, Field
 
 TOKEN_NAME = 'App-Token'
 
@@ -14,19 +15,16 @@ class LoginAttemptResult(Enum):
 
 class AccessAttemptResult(Enum):
     SUCCESS = 'SUCCESS'
-    EXPIRED_TOKEN = 'EXPIRED_TOKEN'
-    BLOCKED_TOKEN = 'BLOCKED_TOKEN'
-    INVALID_TOKEN = 'INVALID_TOKEN'
     PERMISSION_DENIED = 'PERMISSION_DENIED'
+    SINGLE_SERVICE = 'SINGLE_SERVICE'
 
 
 class TokenType(Enum):
     ACCESS = 'ACCESS'
-    REFRESH = 'REFRESH'
+    SESSION = 'SESSION'
 
 
-class RegistrationData(BaseModel):
-    external_id: int = Field(ge=0)
+class Login(BaseModel):
     login: str = Field(max_length=32)
     password: str = Field(max_length=128)
 
@@ -34,17 +32,8 @@ class RegistrationData(BaseModel):
         orm_mode = True
 
 
-class LoginData(BaseModel):
-    login: str | None = Field(max_length=32)
-    password: str | None = Field(max_length=128)
-
-    class Config:
-        orm_mode = True
-
-
-class UserData(BaseModel):
+class User(BaseModel):
     id: int = Field(ge=0)
-    external_id: int = Field(ge=0)
     login: str = Field(max_length=32)
     confirmed: bool
     created_timestamp: datetime
@@ -84,6 +73,7 @@ class Permission(BaseModel):
 
 
 PermissionName = str
+
 
 class Service(BaseModel):
     name: str = Field(max_length=128)

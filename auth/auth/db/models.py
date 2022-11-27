@@ -27,7 +27,6 @@ user_permission = Table(
 class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
-    external_id = Column(Integer, nullable=False)
     login = Column(String(32), nullable=False, unique=True)
     password = Column(String(128), nullable=False)
     confirmed = Column(Boolean, nullable=False, default=False)
@@ -40,7 +39,7 @@ class User(Base):
     login_attempts = relationship('LoginAttempt', backref='users')
 
     def __repr__(self) -> str:
-        return (f'{self.__class__}(id={self.id}, external_id={self.external_id}, '
+        return (f'{self.__class__}(id={self.id}, '
                 f'login={self.login}, password={self.password}, '
                 f'created_timestamp={self.created_timestamp})')
 

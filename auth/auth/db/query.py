@@ -59,35 +59,6 @@ async def user_with_permissions(
         return None
 
 
-async def user_permissions_names(
-    session: AsyncSession,
-    id: int
-) -> list[sh.PermissionName]:
-    statement = (select(md.Permission.name, md.User)
-                 .join(md.User.permissions)
-                 .where(md.User.id == id))
-    return list((await session.execute(statement)).scalars().all())
-
-
-async def user_permissions(
-    session: AsyncSession,
-    id: int
-) -> list[sh.Permission]:
-    statement = (select(md.Permission, md.User)
-                 .join(md.User.permissions)
-                 .where(md.User.id == id))
-    return list((await session.execute(statement)).scalars().all())
-
-
-async def permissions_by_names(
-    session: AsyncSession,
-    permissions: Iterable[sh.PermissionName]
-) -> list[md.Permission]:
-    statement = (select(md.Permission)
-                 .where(md.Permission.name.in_(set(permissions))))
-    return list((await session.execute(statement)).scalars().all())
-
-
 async def user_login_sessions(
     session: con.AsyncSession,
     id: int,
@@ -115,7 +86,7 @@ async def user_login_sessions(
             ).scalars().all()
 
 
-async def delete_user(
+async def user_delete(
     session: con.AsyncSession,
     id: int
 ) -> int | None:
@@ -128,22 +99,6 @@ async def delete_user(
         return None
 
 
-async def login_limit_by_fingerprint(
-    session: AsyncSession,
-    fingerprint: str,
-    delay_minutes: int
-) -> list[md.LoginAttempt]:
-    statement = (select(md.LoginAttempt)
-                 .where(md.LoginAttempt.fingerprint == fingerprint,
-                        md.LoginAttempt.response.not_in((
-                            sh.LoginAttemptResult.SUCCESS.value,
-                            sh.LoginAttemptResult.LIMIT_REACHED.value)),
-                        (md.LoginAttempt.date_time ==
-                         datetime.utcnow() - timedelta(minutes=delay_minutes)))
-                 .order_by(md.LoginAttempt.date_time.desc()))
-    return (await session.execute(statement)).scalars().all()
-
-
 async def service_by_name(
     session: con.AsyncSession,
     name: str
@@ -151,6 +106,18 @@ async def service_by_name(
     try:
         return (await session.execute(select(md.Service)
                                       .where(md.Service.name == name))
+                ).scalars().one()
+    except NoResultFound:
+        return None
+
+
+async def service_by_id(
+    session: con.AsyncSession,
+    id: int
+) -> md.Service | None:
+    try:
+        return (await session.execute(select(md.Service)
+                                      .where(md.Service.id == id))
                 ).scalars().one()
     except NoResultFound:
         return None
@@ -166,7 +133,7 @@ async def service_permissions(
     return list((await session.execute(statement)).scalars().all())
 
 
-async def delete_service(
+async def service_delete(
     session: con.AsyncSession,
     name: str
 ) -> str | None:
@@ -191,7 +158,7 @@ async def permission_by_name(
         return None
 
 
-async def delete_permission(
+async def permission_delete(
     session: con.AsyncSession,
     name: str
 ) -> str | None:
@@ -209,7 +176,8 @@ async def login_session_by_id(
     id: int
 ) -> md.LoginSession | None:
     try:
-        return (await session.execute(select(md.LoginSession).where(md.LoginSession.id == id))
+        return (await session.execute(select(md.LoginSession)
+                                      .where(md.LoginSession.id == id))
                 ).scalars().one()
     except NoResultFound:
         return None
@@ -234,7 +202,7 @@ async def login_session_access_sessions(
             pass
     return list((await session.execute(select(md.AccessSession)
                                        .where(*conditions))
-            ).scalars().all())
+                 ).scalars().all())
 
 
 async def access_session_by_id(
@@ -242,7 +210,33 @@ async def access_session_by_id(
     id: int
 ) -> md.AccessSession | None:
     try:
-        return (await session.execute(select(md.AccessSession).where(md.AccessSession.id == id))
+        return (await session.execute(select(md.AccessSession)
+                                      .where(md.AccessSession.id == id))
                 ).scalars().one()
     except NoResultFound:
         return None
+
+
+async def permissions_by_names(
+    session: AsyncSession,
+    permissions: Iterable[sh.PermissionName]
+) -> list[md.Permission]:
+    statement = (select(md.Permission)
+                 .where(md.Permission.name.in_(set(permissions))))
+    return list((await session.execute(statement)).scalars().all())
+
+
+async def login_attempt_by_fingerprint(
+    session: AsyncSession,
+    fingerprint: str,
+    delay_minutes: int
+) -> list[md.LoginAttempt]:
+    statement = (select(md.LoginAttempt)
+                 .where(md.LoginAttempt.fingerprint == fingerprint,
+                        md.LoginAttempt.response.not_in((
+                            sh.LoginAttemptResult.SUCCESS.value,
+                            sh.LoginAttemptResult.LIMIT_REACHED.value)),
+                        (md.LoginAttempt.date_time ==
+                         datetime.utcnow() - timedelta(minutes=delay_minutes)))
+                 .order_by(md.LoginAttempt.date_time.desc()))
+    return (await session.execute(statement)).scalars().all()
