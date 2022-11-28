@@ -3,8 +3,6 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-TOKEN_NAME = 'App-Token'
-
 
 class LoginAttemptResult(Enum):
     SUCCESS = 'SUCCESS'

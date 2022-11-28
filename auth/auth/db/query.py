@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 from sqlalchemy import delete, func, or_, select
@@ -237,6 +237,6 @@ async def login_attempt_by_fingerprint(
                             sh.LoginAttemptResult.SUCCESS.value,
                             sh.LoginAttemptResult.LIMIT_REACHED.value)),
                         (md.LoginAttempt.date_time ==
-                         datetime.utcnow() - timedelta(minutes=delay_minutes)))
+                         datetime.now(timezone.utc) - timedelta(minutes=delay_minutes)))
                  .order_by(md.LoginAttempt.date_time.desc()))
     return (await session.execute(statement)).scalars().all()

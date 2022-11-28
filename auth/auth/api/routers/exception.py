@@ -2,7 +2,8 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
-from auth.api.schemas import TOKEN_NAME, PermissionName
+from auth.api.schemas import PermissionName
+from auth.security import TOKEN_NAME
 
 
 class IntegrityError(HTTPException):

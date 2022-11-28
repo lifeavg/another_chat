@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import fastapi as fs
 
@@ -7,6 +7,7 @@ import auth.api.schemas as sh
 import auth.db.connection as con
 import auth.db.models as md
 import auth.db.query as dq
+import auth.security as sec
 
 sign_router = fs.APIRouter(tags=['user_identification'])
 
@@ -37,12 +38,13 @@ async def signin(
 
 @sign_router.post('/signout', response_class=fs.Response)
 async def signout(
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(tuple(), sh.SessionTokenData))
 ) -> None:
-    session_token = sh.SessionTokenData(jti=1, sub=1, exp=datetime.now())
     login_sessions = await dq.user_login_sessions(
-        db_session, session_token.sub, 200, 0, True)
+        db_session, token.sub, 200, 0, True)
     for session in login_sessions:
         session.stopped = True  # type: ignore
-        session.end = datetime.utcnow()  # type: ignore
+        session.end = datetime.now(timezone.utc)  # type: ignore
     await db_session.commit()

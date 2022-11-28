@@ -16,7 +16,9 @@ users_router = fs.APIRouter(prefix='/users', tags=['user'])
 @users_router.get('/{id}', response_model=sh.User)
 async def user_data(
     id: int = fs.Path(ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_inf_user',), sh.AccessTokenData))
 ) -> sh.User:
     return await b.user_by_id(db_session, id, True)
 
@@ -24,7 +26,9 @@ async def user_data(
 @users_router.get('/{id}/permissions', response_model=list[sh.PermissionName])
 async def user_permissions(
     id: int = fs.Path(ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> list[sh.PermissionName]:
     return [perm.name for perm in (await b.user_with_permissions(db_session, id)).permissions]
 
@@ -33,7 +37,9 @@ async def user_permissions(
 async def add_user_permissions(
     permissions: list[sh.PermissionName],
     id: int = fs.Path(ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
     user, permissions_db = await asyncio.gather(
         b.user_with_permissions(db_session, id),
@@ -48,7 +54,9 @@ async def add_user_permissions(
 async def remove_user_permissions(
     permissions: list[sh.PermissionName],
     id: int = fs.Path(ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
     user, permissions_db = await asyncio.gather(
         b.user_with_permissions(db_session, id),
@@ -65,7 +73,9 @@ async def user_login_sessions(
     active: bool | None = None,
     limit: int = fs.Query(default=10, gt=1, le=100),
     offset: int = fs.Query(default=0, ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> list[md.LoginSession]:
     return await dq.user_login_sessions(db_session, id, limit, offset, active)
 
@@ -75,7 +85,9 @@ async def update_user_state(
     id: int = fs.Path(ge=0),
     confirmed: bool | None = None,
     active: bool | None = None,
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
     if confirmed is None and active is None:
         raise exc.ParameterRequeued()
@@ -95,7 +107,9 @@ async def update_user_state(
 async def update_user_data(
     login_data: sh.Login,
     id: int = fs.Path(ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_upd_user',), sh.AccessTokenData))
 ) -> None:
     user = await b.user_by_id(db_session, id)
     changed = False
@@ -112,7 +126,9 @@ async def update_user_data(
 @users_router.delete('/{id}', status_code=fs.status.HTTP_204_NO_CONTENT)
 async def delete_user(
     id: int = fs.Path(ge=0),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_del_user',), sh.AccessTokenData))
 ) -> None:
     deleted_id = await dq.user_delete(db_session, id)
     if deleted_id is None:

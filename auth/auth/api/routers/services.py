@@ -6,6 +6,7 @@ import auth.api.schemas as sh
 import auth.db.connection as con
 import auth.db.models as md
 import auth.db.query as dq
+import auth.security as sec
 
 services_router = fs.APIRouter(prefix='/services', tags=['services'])
 
@@ -13,7 +14,9 @@ services_router = fs.APIRouter(prefix='/services', tags=['services'])
 @services_router.post('/', status_code=fs.status.HTTP_201_CREATED, response_class=fs.Response)
 async def create_service(
     new_service: sh.Service,
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
     b.validate_new_key(new_service.key)
     db_session.add(md.Service(name=new_service.name, key=new_service.key))
@@ -23,7 +26,9 @@ async def create_service(
 @services_router.get('/{service_name}', response_model=sh.Service)
 async def service_data(
     service_name: str = fs.Path(max_length=128),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> sh.Service:
     return await b.service_by_name(db_session, service_name)
 
@@ -32,7 +37,9 @@ async def service_data(
 async def add_service_permissions(
     new_permission: sh.Permission,
     service_name: str = fs.Path(max_length=128),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
     service = await b.service_by_name(db_session, service_name)
     db_session.add(md.Permission(
@@ -45,7 +52,9 @@ async def add_service_permissions(
 @services_router.get('/{service_name}/permissions', response_model=list[sh.Permission])
 async def service_permissions(
     service_name: str = fs.Path(max_length=128),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_mod',), sh.AccessTokenData))
 ) -> list[md.Permission]:
     return await dq.service_permissions(db_session, service_name)
 
@@ -54,7 +63,9 @@ async def service_permissions(
 async def update_service_key(
     key: sh.Key,
     service_name: str = fs.Path(max_length=128),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_mod',), sh.AccessTokenData))
 ) -> None:
     service = await b.service_by_name(db_session, service_name)
     b.validate_new_key(key.key)
@@ -65,7 +76,9 @@ async def update_service_key(
 @services_router.delete('/{service_name}', status_code=fs.status.HTTP_204_NO_CONTENT)
 async def delete_service(
     service_name: str = fs.Path(max_length=128),
-    db_session: con.AsyncSession = fs.Depends(con.get_db_session)
+    db_session: con.AsyncSession = fs.Depends(con.get_db_session),
+    token: sh.SessionTokenData = fs.Depends(
+        sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
     deleted_service = await dq.service_delete(db_session, service_name)
     if not deleted_service:

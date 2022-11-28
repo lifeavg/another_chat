@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 import fastapi as fa
@@ -49,7 +49,7 @@ async def create_new_user(
         password=sec.password_hash(registration_data.password),
         confirmed=False,
         active=True,
-        created_timestamp=datetime.utcnow())
+        created_timestamp=datetime.now(timezone.utc))
     db_session.add(new_user)
     await commit_if_not_exists(db_session)
     return new_user
@@ -75,7 +75,7 @@ def add_login_attempt(
     db_session.add(md.LoginAttempt(
         user_id=user.id if user is not None else None,
         fingerprint=request.client.host,  # type: ignore
-        date_time=datetime.utcnow(),
+        date_time=datetime.now(timezone.utc),
         response=result.value))
 
 
@@ -88,7 +88,7 @@ def add_access_attempt(
     db_session.add(md.AccessAttempt(
         login_session_id=token.jti,
         fingerprint=request.client.host,  # type: ignore
-        date_time=datetime.utcnow(),
+        date_time=datetime.now(timezone.utc),
         response=result.value))
 
 
@@ -130,7 +130,7 @@ def add_login_session(
     user: md.User,
     db_session: con.AsyncSession
 ) -> md.LoginSession:
-    start = datetime.utcnow()
+    start = datetime.now(timezone.utc)
     expires = start + timedelta(minutes=sec.SEC_SESSION_EXPIRE_MINUTES)
     session = md.LoginSession(
         user_id=user.id, start=start, end=expires)  # type: ignore
@@ -140,7 +140,7 @@ def add_login_session(
 
 def create_session_token(session: md.LoginSession) -> sh.Token:
     return sh.Token(
-        token=sec.create_access_token(
+        token=sec.create_token(
             data=sh.SessionTokenData(
                 jti=session.id,  # type: ignore
                 sub=session.user_id,  # type: ignore
@@ -275,6 +275,7 @@ def calculate_access_expiration(
         requested_permissions,
         key=lambda x: x.expiration_min)  # type: ignore
     min_time = min(
-        divmod((session_token.exp - datetime.now()).total_seconds(), 60)[0],
+        divmod((session_token.exp - datetime.now(timezone.utc)
+                ).total_seconds(), 60)[0],
         permission_min_time.expiration_min)
-    return datetime.utcnow() + timedelta(minutes=min_time)
+    return datetime.now(timezone.utc) + timedelta(minutes=min_time)
