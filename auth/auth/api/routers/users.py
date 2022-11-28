@@ -71,7 +71,7 @@ async def remove_user_permissions(
 async def user_login_sessions(
     id: int = fs.Path(ge=0),
     active: bool | None = None,
-    limit: int = fs.Query(default=10, gt=1, le=100),
+    limit: int = fs.Query(default=10, ge=1, le=100),
     offset: int = fs.Query(default=0, ge=0),
     db_session: con.AsyncSession = fs.Depends(con.get_db_session),
     token: sh.SessionTokenData = fs.Depends(
