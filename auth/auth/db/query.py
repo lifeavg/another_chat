@@ -74,7 +74,7 @@ async def user_login_sessions(
         case False:
             conditions.append(
                 or_(md.LoginSession.stopped == (not active),
-                    md.LoginSession.end > func.now_utc())
+                    md.LoginSession.end < func.now_utc())
             )
         case _:
             pass
