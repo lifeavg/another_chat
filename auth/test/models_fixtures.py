@@ -1,3 +1,4 @@
+import asyncio
 import random
 import string
 from datetime import datetime, timedelta, timezone
@@ -14,7 +15,7 @@ from auth.db.models import (AccessAttempt, AccessSession, LoginAttempt,
                             LoginSession, Permission, Service, User)
 from auth.security import password_hash
 
-TEARDOWN: bool = False
+TEARDOWN: bool = True
 
 
 def random_string(length):
@@ -23,6 +24,11 @@ def random_string(length):
 
 
 @pytest.fixture(scope='session')
+def event_loop():
+    return asyncio.get_event_loop()
+
+
+@pytest.fixture(scope='session')  # ??? different loop for each function
 def engine():
     DB_CONNECTION = 'postgresql+asyncpg'
     DB_USER = 'postgres'
@@ -105,7 +111,7 @@ async def service_permission(session, service):
         expiration_min=randint(5, 10))
     session.add(permission)
     await session.commit()
-    yield permission
+    yield permission, service
     if TEARDOWN:
         await session.execute(delete(Permission)
                               .where(Permission.id == permission.id))
@@ -118,11 +124,11 @@ async def user_permission(session, service_permission, active_user):
                                   .where(User.id == active_user.id)
                                   .options(selectinload(User.permissions)))
             ).scalars().one()
-    user.permissions.append(service_permission)
+    user.permissions.append(service_permission[0])
     await session.commit()
-    yield user, service_permission
+    yield user, service_permission[0]
     if TEARDOWN:
-        user.permissions.remove(service_permission)
+        user.permissions.remove(service_permission[0])
         await session.commit()
 
 
@@ -161,7 +167,7 @@ async def unsuccessful_login_attempt(session, user_permission):
 @pytest_asyncio.fixture
 async def active_login_session(session, successful_login_attempt):
     login_session = LoginSession(
-        user_id=successful_login_attempt[1].id,
+        user_id=successful_login_attempt[0].user_id,
         start=datetime.now(timezone.utc),
         end=datetime.now(timezone.utc) + timedelta(minutes=60),
         stopped=False)
@@ -175,12 +181,28 @@ async def active_login_session(session, successful_login_attempt):
 
 
 @pytest_asyncio.fixture
-async def inactive_login_session(session, unsuccessful_login_attempt):
+async def inactive_login_session_stopped(session, unsuccessful_login_attempt):
     login_session = LoginSession(
-        user_id=unsuccessful_login_attempt[1].id,
+        user_id=unsuccessful_login_attempt[0].user_id,
+        start=datetime.now(timezone.utc) - timedelta(minutes=20),
+        end=datetime.now(timezone.utc) + timedelta(minutes=20),
+        stopped=True)
+    session.add(login_session)
+    await session.commit()
+    yield login_session
+    if TEARDOWN:
+        await session.execute(delete(LoginSession)
+                              .where(LoginSession.id == login_session.id))
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def inactive_login_session_expired(session, unsuccessful_login_attempt):
+    login_session = LoginSession(
+        user_id=unsuccessful_login_attempt[0].user_id,
         start=datetime.now(timezone.utc) - timedelta(minutes=120),
         end=datetime.now(timezone.utc) - timedelta(minutes=20),
-        stopped=True)
+        stopped=False)
     session.add(login_session)
     await session.commit()
     yield login_session
