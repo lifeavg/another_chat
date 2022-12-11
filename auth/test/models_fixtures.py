@@ -150,33 +150,67 @@ async def successful_login_attempt(session, user_permission):
 
 @pytest_asyncio.fixture
 async def unsuccessful_login_attempt(session, user_permission):
+    fingerprint=random_string(10)
     login_attempt = LoginAttempt(
         user_id=user_permission[0].id,
-        fingerprint=random_string(10),
+        fingerprint=fingerprint,
         date_time=datetime.now(timezone.utc),
         response=LoginAttemptResult.INCORRECT_PASSWORD.value)
+    successful_login_attempt = LoginAttempt(
+        user_id=user_permission[0].id,
+        fingerprint=fingerprint,
+        date_time=datetime.now(timezone.utc),
+        response=LoginAttemptResult.SUCCESS.value)
+    expired_login_attempt = LoginAttempt(
+        user_id=user_permission[0].id,
+        fingerprint=fingerprint,
+        date_time=datetime.now(timezone.utc) - timedelta(minutes=60),
+        response=LoginAttemptResult.INCORRECT_PASSWORD.value)
     session.add(login_attempt)
+    session.add(successful_login_attempt)
+    session.add(expired_login_attempt)
     await session.commit()
     yield login_attempt, user_permission
     if TEARDOWN:
         await session.execute(delete(LoginAttempt)
                               .where(LoginAttempt.id == login_attempt.id))
+        await session.execute(delete(LoginAttempt)
+                              .where(LoginAttempt.id == successful_login_attempt.id))
+        await session.execute(delete(LoginAttempt)
+                              .where(LoginAttempt.id == expired_login_attempt.id))
         await session.commit()
 
 
 @pytest_asyncio.fixture
 async def unsuccessful_login_attempt_expired(session, user_permission):
+    fingerprint = random_string(10)
     login_attempt = LoginAttempt(
         user_id=user_permission[0].id,
-        fingerprint=random_string(10),
+        fingerprint=fingerprint,
         date_time=datetime.now(timezone.utc) - timedelta(minutes=60),
         response=LoginAttemptResult.INCORRECT_PASSWORD.value)
+    unsuccessful_login_attempt = LoginAttempt(
+        user_id=user_permission[0].id,
+        fingerprint=fingerprint,
+        date_time=datetime.now(timezone.utc),
+        response=LoginAttemptResult.LIMIT_REACHED.value)
+    successful_login_attempt = LoginAttempt(
+        user_id=user_permission[0].id,
+        fingerprint=fingerprint,
+        date_time=datetime.now(timezone.utc),
+        response=LoginAttemptResult.SUCCESS.value)
     session.add(login_attempt)
+    session.add(unsuccessful_login_attempt)
+    session.add(successful_login_attempt)
     await session.commit()
     yield login_attempt, user_permission
     if TEARDOWN:
         await session.execute(delete(LoginAttempt)
                               .where(LoginAttempt.id == login_attempt.id))
+        await session.execute(delete(LoginAttempt)
+                              .where(LoginAttempt.id == unsuccessful_login_attempt.id))
+        await session.execute(delete(LoginAttempt)
+                              .where(LoginAttempt.id == successful_login_attempt.id))
         await session.commit()
 
 
@@ -187,12 +221,28 @@ async def active_login_session(session, successful_login_attempt):
         start=datetime.now(timezone.utc),
         end=datetime.now(timezone.utc) + timedelta(minutes=60),
         stopped=False)
+    stopped_login_session = LoginSession(
+        user_id=successful_login_attempt[0].user_id,
+        start=datetime.now(timezone.utc) - timedelta(minutes=20),
+        end=datetime.now(timezone.utc) + timedelta(minutes=20),
+        stopped=True)
+    expired_login_session = LoginSession(
+        user_id=successful_login_attempt[0].user_id,
+        start=datetime.now(timezone.utc) - timedelta(minutes=120),
+        end=datetime.now(timezone.utc) - timedelta(minutes=20),
+        stopped=False)
     session.add(login_session)
+    session.add(stopped_login_session)
+    session.add(expired_login_session)
     await session.commit()
     yield login_session
     if TEARDOWN:
         await session.execute(delete(LoginSession)
                               .where(LoginSession.id == login_session.id))
+        await session.execute(delete(LoginSession)
+                              .where(LoginSession.id == stopped_login_session.id))
+        await session.execute(delete(LoginSession)
+                              .where(LoginSession.id == expired_login_session.id))
         await session.commit()
 
 
@@ -251,12 +301,28 @@ async def active_access_session(session, successful_access_attempt):
         start=datetime.now(timezone.utc),
         end=datetime.now(timezone.utc) + timedelta(minutes=30),
         stopped=False)
+    expired_access_session = AccessSession(
+        login_session_id=successful_access_attempt[1].id,
+        start=datetime.now(timezone.utc) - timedelta(minutes=40),
+        end=datetime.now(timezone.utc) - timedelta(minutes=10),
+        stopped=False)
+    stopped_access_session = AccessSession(
+        login_session_id=successful_access_attempt[1].id,
+        start=datetime.now(timezone.utc),
+        end=datetime.now(timezone.utc) + timedelta(minutes=30),
+        stopped=True)
     session.add(access_session)
+    session.add(expired_access_session)
+    session.add(stopped_access_session)
     await session.commit()
     yield access_session
     if TEARDOWN:
         await session.execute(delete(AccessSession)
                               .where(AccessSession.id == access_session.id))
+        await session.execute(delete(AccessSession)
+                              .where(AccessSession.id == expired_access_session.id))
+        await session.execute(delete(AccessSession)
+                              .where(AccessSession.id == stopped_access_session.id))
         await session.commit()
 
 
@@ -267,12 +333,20 @@ async def inactive_access_session_stopped(session, successful_access_attempt):
         start=datetime.now(timezone.utc),
         end=datetime.now(timezone.utc) + timedelta(minutes=30),
         stopped=True)
+    running_access_session = AccessSession(
+        login_session_id=successful_access_attempt[1].id,
+        start=datetime.now(timezone.utc),
+        end=datetime.now(timezone.utc) + timedelta(minutes=30),
+        stopped=False)
     session.add(access_session)
+    session.add(running_access_session)
     await session.commit()
     yield access_session
     if TEARDOWN:
         await session.execute(delete(AccessSession)
                               .where(AccessSession.id == access_session.id))
+        await session.execute(delete(AccessSession)
+                              .where(AccessSession.id == running_access_session.id))
         await session.commit()
 
 
@@ -283,10 +357,18 @@ async def inactive_access_session_expired(session, successful_access_attempt):
         start=datetime.now(timezone.utc) - timedelta(minutes=40),
         end=datetime.now(timezone.utc) - timedelta(minutes=10),
         stopped=False)
+    running_access_session = AccessSession(
+        login_session_id=successful_access_attempt[1].id,
+        start=datetime.now(timezone.utc),
+        end=datetime.now(timezone.utc) + timedelta(minutes=30),
+        stopped=False)
     session.add(access_session)
+    session.add(running_access_session)
     await session.commit()
     yield access_session
     if TEARDOWN:
         await session.execute(delete(AccessSession)
                               .where(AccessSession.id == access_session.id))
+        await session.execute(delete(AccessSession)
+                              .where(AccessSession.id == running_access_session.id))
         await session.commit()
