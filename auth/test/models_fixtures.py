@@ -28,7 +28,7 @@ def event_loop():
     return asyncio.get_event_loop()
 
 
-@pytest.fixture(scope='session')  # ??? different loop for each function
+@pytest.fixture(scope='session')
 def engine():
     DB_CONNECTION = 'postgresql+asyncpg'
     DB_USER = 'postgres'
@@ -165,6 +165,22 @@ async def unsuccessful_login_attempt(session, user_permission):
 
 
 @pytest_asyncio.fixture
+async def unsuccessful_login_attempt_expired(session, user_permission):
+    login_attempt = LoginAttempt(
+        user_id=user_permission[0].id,
+        fingerprint=random_string(10),
+        date_time=datetime.now(timezone.utc) - timedelta(minutes=60),
+        response=LoginAttemptResult.INCORRECT_PASSWORD.value)
+    session.add(login_attempt)
+    await session.commit()
+    yield login_attempt, user_permission
+    if TEARDOWN:
+        await session.execute(delete(LoginAttempt)
+                              .where(LoginAttempt.id == login_attempt.id))
+        await session.commit()
+
+
+@pytest_asyncio.fixture
 async def active_login_session(session, successful_login_attempt):
     login_session = LoginSession(
         user_id=successful_login_attempt[0].user_id,
@@ -233,7 +249,39 @@ async def active_access_session(session, successful_access_attempt):
     access_session = AccessSession(
         login_session_id=successful_access_attempt[1].id,
         start=datetime.now(timezone.utc),
-        end=datetime.now(timezone.utc) - timedelta(minutes=30),
+        end=datetime.now(timezone.utc) + timedelta(minutes=30),
+        stopped=False)
+    session.add(access_session)
+    await session.commit()
+    yield access_session
+    if TEARDOWN:
+        await session.execute(delete(AccessSession)
+                              .where(AccessSession.id == access_session.id))
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def inactive_access_session_stopped(session, successful_access_attempt):
+    access_session = AccessSession(
+        login_session_id=successful_access_attempt[1].id,
+        start=datetime.now(timezone.utc),
+        end=datetime.now(timezone.utc) + timedelta(minutes=30),
+        stopped=True)
+    session.add(access_session)
+    await session.commit()
+    yield access_session
+    if TEARDOWN:
+        await session.execute(delete(AccessSession)
+                              .where(AccessSession.id == access_session.id))
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def inactive_access_session_expired(session, successful_access_attempt):
+    access_session = AccessSession(
+        login_session_id=successful_access_attempt[1].id,
+        start=datetime.now(timezone.utc) - timedelta(minutes=40),
+        end=datetime.now(timezone.utc) - timedelta(minutes=10),
         stopped=False)
     session.add(access_session)
     await session.commit()

@@ -2,16 +2,23 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from models_fixtures import (active_login_session, active_user, engine,
-                             event_loop, inactive_login_session_expired,
+                             event_loop, inactive_access_session_expired,
+                             inactive_access_session_stopped,
+                             inactive_login_session_expired,
                              inactive_login_session_stopped, inactive_user,
                              service, service_permission, session,
                              successful_login_attempt,
-                             unsuccessful_login_attempt, user_permission)
+                             unsuccessful_login_attempt, user_permission,
+                             unsuccessful_login_attempt_expired,
+                             active_access_session,
+                             successful_access_attempt)
 
 from auth.db.query import (login_session_access_sessions, login_session_by_id,
                            permission_by_name, service_by_id, service_by_name,
                            service_permissions, user_by_id, user_by_login,
-                           user_login_sessions, user_with_permissions)
+                           user_login_sessions, user_with_permissions,
+                           access_session_by_id, permissions_by_names,
+                           login_attempt_by_fingerprint)
 
 
 class TestUserByLogin:
@@ -112,6 +119,7 @@ class TestUserLoginSessions:
         assert login_sessions[0].id == inactive_login_session_expired.id
 
 
+@pytest.mark.skip(reason='to do')
 class TestUserDelete:
     pass
 
@@ -153,6 +161,7 @@ class TestServicePermissions:
         assert len(permissions) == 0
 
 
+@pytest.mark.skip(reason='to do')
 class TestServiceDelete:
     pass
 
@@ -169,6 +178,7 @@ class TestPermissionByName:
         assert permission is None
 
 
+@pytest.mark.skip(reason='to do')
 class TestPermissionDelete:
     pass
 
@@ -190,25 +200,76 @@ class TestLoginSessionById:
         assert login_session.id == inactive_login_session_stopped.id  # type: ignore
 
 
-@pytest.mark.skip(reason='in progress')
 class TestLoginSessionAccessSessions:
     @pytest.mark.asyncio
     async def test_active(self, session, active_access_session):
-        login_sessions = await login_session_access_sessions(
-            session, active_login_session.id, 10, 0, True)
-        assert len(login_sessions) == 1
-        assert login_sessions[0].id == active_login_session.id
+        access_sessions = await login_session_access_sessions(
+            session, active_access_session.login_session_id, True)
+        assert len(access_sessions) == 1
+        assert access_sessions[0].id == active_access_session.id
 
     @pytest.mark.asyncio
-    async def test_stopped(self, session, inactive_login_session_stopped):
-        login_sessions = await login_session_access_sessions(
-            session, inactive_login_session_stopped.user_id, 10, 0, False)
-        assert len(login_sessions) == 1
-        assert login_sessions[0].id == inactive_login_session_stopped.id
+    async def test_stopped(self, session, inactive_access_session_stopped):
+        access_sessions = await login_session_access_sessions(
+            session, inactive_access_session_stopped.login_session_id, False)
+        assert len(access_sessions) == 1
+        assert access_sessions[0].id == inactive_access_session_stopped.id
 
     @pytest.mark.asyncio
-    async def test_expired(self, session, inactive_login_session_expired):
-        login_sessions = await login_session_access_sessions(
-            session, inactive_login_session_expired.user_id, 10, 0, False)
-        assert len(login_sessions) == 1
-        assert login_sessions[0].id == inactive_login_session_expired.id
+    async def test_expired(self, session, inactive_access_session_expired):
+        access_sessions = await login_session_access_sessions(
+            session, inactive_access_session_expired.login_session_id, False)
+        assert len(access_sessions) == 1
+        assert access_sessions[0].id == inactive_access_session_expired.id
+
+
+class TestAccessSessionById:
+    @pytest.mark.asyncio
+    async def test_found(self, session, active_access_session):
+        access_session = await access_session_by_id(session, active_access_session.id)
+        assert active_access_session.id == access_session.id  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_not_found(self, session, active_access_session):
+        access_session = await access_session_by_id(session, 9999999)
+        assert access_session is None
+
+
+class TestPermissionsByNames:
+    @pytest.mark.asyncio
+    async def test_found(self, session, service_permission):
+        permissions = await permissions_by_names(
+            session, [service_permission[0].name, service_permission[0].name])
+        assert len(permissions) == 1
+        assert permissions[0].id == service_permission[0].id
+
+    @pytest.mark.asyncio
+    async def test_not_found(self, session, service_permission):
+        permissions = await permissions_by_names(session, ['aaa', 'aaa', 'bbb'])
+        assert len(permissions) == 0
+
+
+class TestLoginAttemptByFingerprint:
+    @pytest.mark.asyncio
+    async def test_fingerprint_not_found(self, session, successful_login_attempt):
+        login_attempts = await login_attempt_by_fingerprint(session, 'aaa', 30)
+        assert len(login_attempts) == 0
+
+    @pytest.mark.asyncio
+    async def test_response_in_allowed(self, session, successful_login_attempt):
+        login_attempts = await login_attempt_by_fingerprint(
+            session, successful_login_attempt[0].fingerprint, 30)
+        assert len(login_attempts) == 0
+
+    @pytest.mark.asyncio
+    async def test_delay_passed(self, session, unsuccessful_login_attempt_expired):
+        login_attempts = await login_attempt_by_fingerprint(
+            session, unsuccessful_login_attempt_expired[0].fingerprint, 30)
+        assert len(login_attempts) == 0
+
+    @pytest.mark.asyncio
+    async def test_found(self, session, unsuccessful_login_attempt):
+        login_attempts = await login_attempt_by_fingerprint(
+            session, unsuccessful_login_attempt[0].fingerprint, 30)
+        assert len(login_attempts) == 1
+        assert login_attempts[0].id == unsuccessful_login_attempt[0].id
