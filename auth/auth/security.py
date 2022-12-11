@@ -81,7 +81,7 @@ async def login_limit(
         session, fingerprint, delay_minutes)
     if len(attempts) >= max_attempts:
         return timedelta(minutes=delay_minutes) - \
-            (datetime.now(timezone.utc) - attempts[0].date_time())
+            (datetime.now(timezone.utc) - attempts[0].date_time)  # type: ignore
 
 
 def get_key(token_type: type) -> bytes:
