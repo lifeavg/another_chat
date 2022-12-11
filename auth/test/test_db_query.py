@@ -1,24 +1,23 @@
-from datetime import datetime, timedelta, timezone
-
 import pytest
-from models_fixtures import (active_login_session, active_user, engine,
-                             event_loop, inactive_access_session_expired,
+from models_fixtures import (active_access_session, active_login_session,
+                             active_user, engine, event_loop,
+                             inactive_access_session_expired,
                              inactive_access_session_stopped,
                              inactive_login_session_expired,
                              inactive_login_session_stopped, inactive_user,
                              service, service_permission, session,
+                             successful_access_attempt,
                              successful_login_attempt,
-                             unsuccessful_login_attempt, user_permission,
+                             unsuccessful_login_attempt,
                              unsuccessful_login_attempt_expired,
-                             active_access_session,
-                             successful_access_attempt)
+                             user_permission)
 
-from auth.db.query import (login_session_access_sessions, login_session_by_id,
-                           permission_by_name, service_by_id, service_by_name,
-                           service_permissions, user_by_id, user_by_login,
-                           user_login_sessions, user_with_permissions,
-                           access_session_by_id, permissions_by_names,
-                           login_attempt_by_fingerprint)
+from auth.db.query import (access_session_by_id, login_attempt_by_fingerprint,
+                           login_session_access_sessions, login_session_by_id,
+                           permission_by_name, permissions_by_names,
+                           service_by_id, service_by_name, service_permissions,
+                           user_by_id, user_by_login, user_login_sessions,
+                           user_with_permissions)
 
 
 class TestUserByLogin:

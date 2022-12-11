@@ -150,7 +150,7 @@ async def successful_login_attempt(session, user_permission):
 
 @pytest_asyncio.fixture
 async def unsuccessful_login_attempt(session, user_permission):
-    fingerprint=random_string(10)
+    fingerprint = random_string(10)
     login_attempt = LoginAttempt(
         user_id=user_permission[0].id,
         fingerprint=fingerprint,
