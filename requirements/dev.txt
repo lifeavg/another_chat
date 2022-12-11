@@ -3,3 +3,4 @@ pycodestyle
 pylint
 pytest
 pytest-asyncio
+pytest-mock
