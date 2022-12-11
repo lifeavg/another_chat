@@ -196,7 +196,7 @@ async def login_session_access_sessions(
         case False:
             conditions.append(
                 or_(md.AccessSession.stopped == True,
-                    md.AccessSession.end > func.now_utc())
+                    md.AccessSession.end < func.now_utc())
             )
         case _:
             pass
@@ -236,7 +236,7 @@ async def login_attempt_by_fingerprint(
                         md.LoginAttempt.response.not_in((
                             sh.LoginAttemptResult.SUCCESS.value,
                             sh.LoginAttemptResult.LIMIT_REACHED.value)),
-                        (md.LoginAttempt.date_time ==
+                        (md.LoginAttempt.date_time >=
                          datetime.now(timezone.utc) - timedelta(minutes=delay_minutes)))
                  .order_by(md.LoginAttempt.date_time.desc()))
     return (await session.execute(statement)).scalars().all()
