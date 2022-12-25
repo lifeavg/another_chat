@@ -45,7 +45,7 @@ async def get_access_session(
             sub=token.sub,
             pms=permissions,
             exp=expire_at).dict(),
-            secret=bytes((await b.service_by_id(db_session, list(requested_permissions)[0].service_id)).key)),  # type: ignore
+            secret=bytes((await b.service_by_id(db_session, list(requested_permissions)[0].service_id)).key, encoding='utf-8')),  # type: ignore
         type=sh.TokenType.ACCESS)
 
 
