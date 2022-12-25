@@ -1,5 +1,3 @@
-import asyncio
-import functools
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
@@ -12,7 +10,6 @@ import auth.db.connection as con
 import auth.db.models as md
 import auth.db.query as dq
 import auth.security as sec
-from typing import Callable, Any
 
 
 
