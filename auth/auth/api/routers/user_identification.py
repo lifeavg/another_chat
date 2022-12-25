@@ -9,10 +9,10 @@ import auth.db.models as md
 import auth.db.query as dq
 import auth.security as sec
 
-sign_router = fs.APIRouter(tags=['user_identification'])
+user_identification_router = fs.APIRouter(tags=['user_identification'])
 
 
-@sign_router.post('/signup', status_code=fs.status.HTTP_201_CREATED, response_model=sh.User)
+@user_identification_router.post('/signup', status_code=fs.status.HTTP_201_CREATED, response_model=sh.User)
 async def signup(
     registration_data: sh.Login,
     db_session: con.AsyncSession = fs.Depends(con.get_db_session)
@@ -21,7 +21,7 @@ async def signup(
     return await b.create_new_user(registration_data, db_session)
 
 
-@sign_router.post('/signin', response_model=sh.Token)
+@user_identification_router.post('/signin', response_model=sh.Token)
 async def signin(
     login_data: sh.Login,
     request: fs.Request,
@@ -36,7 +36,7 @@ async def signin(
     return b.create_session_token(session)
 
 
-@sign_router.post('/signout', response_class=fs.Response)
+@user_identification_router.post('/signout', response_class=fs.Response)
 async def signout(
     db_session: con.AsyncSession = fs.Depends(con.get_db_session),
     token: sh.SessionTokenData = fs.Depends(
