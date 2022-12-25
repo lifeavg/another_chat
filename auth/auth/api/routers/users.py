@@ -41,12 +41,17 @@ async def add_user_permissions(
     token: sh.SessionTokenData = fs.Depends(
         sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
-    user, permissions_db = await asyncio.gather(
+    task_result = await asyncio.gather(
         b.user_with_permissions(db_session, id),
-        b.permissions_by_names(set(permissions), db_session))
-    new_permissions = set(permissions_db) - set(user.permissions)
+        b.permissions_by_names(set(permissions), db_session),
+        return_exceptions=True)
+    exceptions = [e for e in task_result if isinstance(e, Exception)]
+    if exceptions:
+        raise exceptions[0]
+    user, permissions_db = task_result
+    new_permissions = set(permissions_db) - set(user.permissions) # type: ignore
     if new_permissions:
-        user.permissions.append(*new_permissions)
+        user.permissions.append(*new_permissions)  # type: ignore
         await db_session.commit()
 
 
@@ -58,9 +63,13 @@ async def remove_user_permissions(
     token: sh.SessionTokenData = fs.Depends(
         sec.TokenAuth(('auth_adm',), sh.AccessTokenData))
 ) -> None:
-    user, permissions_db = await asyncio.gather(
+    task_result = await asyncio.gather(
         b.user_with_permissions(db_session, id),
         b.permissions_by_names(set(permissions), db_session))
+    exceptions = [e for e in task_result if isinstance(e, Exception)]
+    if exceptions:
+        raise exceptions[0]
+    user, permissions_db = task_result
     existing_permissions = set(permissions_db).intersection(user.permissions)
     if existing_permissions:
         user.permissions.remove(*existing_permissions)

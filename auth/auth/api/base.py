@@ -15,17 +15,6 @@ import auth.security as sec
 from typing import Callable, Any
 
 
-def canceled_task():
-    def wrapper(function: Callable) -> Callable:
-        @functools.wraps(function)
-        async def wrapped(*args, **kwargs) -> Any:
-            try:
-                return await function(*args, **kwargs)
-            except asyncio.CancelledError:
-                pass
-        return wrapped
-    return wrapper
-
 
 async def commit_if_not_exists(db_session: con.AsyncSession) -> None:
     try:
@@ -150,7 +139,6 @@ def create_session_token(session: md.LoginSession) -> sh.Token:
         type=sh.TokenType.SESSION)
 
 
-@canceled_task()
 async def user_with_permissions(
     db_session: con.AsyncSession,
     id: int,
@@ -162,7 +150,6 @@ async def user_with_permissions(
     return user
 
 
-@canceled_task()
 async def permissions_by_names(
     permissions: set[sh.PermissionName],
     db_session: con.AsyncSession
@@ -174,7 +161,6 @@ async def permissions_by_names(
     return perms
 
 
-@canceled_task()
 async def service_by_name(
     db_session: con.AsyncSession,
     name: str,
