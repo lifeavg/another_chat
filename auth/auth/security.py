@@ -13,7 +13,7 @@ from auth.api.schemas import AccessTokenData, PermissionName, SessionTokenData
 
 TOKEN_NAME = 'Bearer'
 
-SEC_SESSION_EXPIRE_MINUTES = 30
+SEC_SESSION_EXPIRE_MINUTES = 300
 SEC_ATTEMPT_DELAY_MINUTES = 10
 SEC_MAX_ATTEMPT_DELAY_COUNT = 5
 
@@ -30,10 +30,10 @@ class UnknownTokenType(Exception):
 
 
 class AuthError(fa.HTTPException):
-    def __init__(self) -> None:
+    def __init__(self, reason) -> None:
         super().__init__(
             fa.status.HTTP_403_FORBIDDEN,
-            'Invalid authorization code')
+            f'Invalid authorization code: {reason}')
 
 
 def verify_password(
@@ -121,13 +121,13 @@ class TokenAuth(HTTPBearer):
                 token = verify_token(
                     credentials.credentials, self.token_type, self.key)
                 if token.exp < datetime.now(timezone.utc):
-                    raise AuthError()
+                    raise AuthError('time')
                 if (isinstance(token, AccessTokenData)
                         and not set(self.permissions).issubset(token.pms)):
-                    raise AuthError()
+                    raise AuthError('type')
                 return token
             except JWTError:
-                raise AuthError()
+                raise AuthError('decode')
             except ValidationError:
-                raise AuthError()
-        raise AuthError()
+                raise AuthError('validation')
+        raise AuthError('unexpected')
