@@ -1,14 +1,16 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from auth.api.schemas import Login
-from auth.db.models import Permission, User
+from auth.db.models import LoginSession, Permission, User
 
 
 @pytest.fixture
 def user():
-    return User(id=1, login='a', password='b', confirmed=True, active=True,
+    return User(id=1, login='a',
+                password='$2b$12$PgOq5lNUhf/Jnyam70ewY.ZDZxU73150IShkznDGjRwNjMZh7H91a',
+                confirmed=True, active=True,
                 created_timestamp=datetime(2020, 11, 18, 11, 12, 13, 120, timezone.utc))
 
 
@@ -38,3 +40,19 @@ def user_with_permissions():
 def permissions():
     return [Permission(id=7, name='p7', service_id=3, expiration_min=10),
             Permission(id=8, name='p8', service_id=5, expiration_min=10)]
+
+
+@pytest.fixture
+def login_sessions():
+    return [
+        LoginSession(
+            id=1, user_id=1,
+            start=datetime.now(timezone.utc) - timedelta(minutes=5),
+            end=datetime.now(timezone.utc) + timedelta(minutes=10),
+            stopped=False),
+        LoginSession(
+            id=2, user_id=1,
+            start=datetime.now(timezone.utc) - timedelta(minutes=5),
+            end=datetime.now(timezone.utc) + timedelta(minutes=10),
+            stopped=False)
+    ]

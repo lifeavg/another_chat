@@ -30,7 +30,8 @@ async def signin(
     await b.check_login_limit(request, db_session)
     user = await dq.user_by_login(db_session, login_data.login)
     await b.check_login_data(login_data, user, db_session, request)
-    b.add_login_attempt(request, db_session, user=user)
+    b.add_login_attempt(request, db_session,
+                        sh.LoginAttemptResult.SUCCESS, user)
     session = b.add_login_session(user, db_session)
     await db_session.commit()
     return b.create_session_token(session)

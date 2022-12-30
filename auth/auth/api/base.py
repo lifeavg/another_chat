@@ -12,7 +12,6 @@ import auth.db.query as dq
 import auth.security as sec
 
 
-
 async def commit_if_not_exists(db_session: con.AsyncSession) -> None:
     try:
         await db_session.commit()
@@ -57,7 +56,7 @@ async def user_by_id(
 def add_login_attempt(
     request: fa.Request,
     db_session: con.AsyncSession,
-    result: sh.LoginAttemptResult = sh.LoginAttemptResult.SUCCESS,
+    result: sh.LoginAttemptResult,
     user: md.User | None = None
 ) -> None:
     db_session.add(md.LoginAttempt(
