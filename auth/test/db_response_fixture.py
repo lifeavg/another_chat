@@ -2,8 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from auth.api.schemas import Login
-from auth.db.models import LoginSession, Permission, User
+from auth.db.models import LoginSession, Permission, Service, User
 
 
 @pytest.fixture
@@ -12,11 +11,6 @@ def user():
                 password='$2b$12$PgOq5lNUhf/Jnyam70ewY.ZDZxU73150IShkznDGjRwNjMZh7H91a',
                 confirmed=True, active=True,
                 created_timestamp=datetime(2020, 11, 18, 11, 12, 13, 120, timezone.utc))
-
-
-@pytest.fixture
-def login():
-    return Login(login='user_login', password='pretty_password')
 
 
 @pytest.fixture
@@ -56,3 +50,8 @@ def login_sessions():
             end=datetime.now(timezone.utc) + timedelta(minutes=10),
             stopped=False)
     ]
+
+
+@pytest.fixture
+def service():
+    return Service(id=1, name='service_name', key='service_key')

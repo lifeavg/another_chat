@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from api_fixture import HOST, authorization
-from db_response_fixture import login, permissions, user, user_with_permissions
+from api_fixture import HOST, authorization, login
+from db_response_fixture import permissions, user, user_with_permissions
 from httpx import AsyncClient
 from pytest_mock import mocker
 

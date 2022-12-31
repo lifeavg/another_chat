@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from auth.api.schemas import AccessTokenData, SessionTokenData
+from auth.api.schemas import (AccessTokenData, Login, Permission,
+                              SessionTokenData)
 from auth.security import SEC_SECRET_ACCESS, SEC_SECRET_SESSION, create_token
 
 HOST: str = 'http://localhost:8080'
@@ -22,3 +23,13 @@ def session() -> dict[str, str]:
     session_data = SessionTokenData(jti=1, sub=1, exp=token_exp)
     return {'Authorization': 'Bearer ' +
             create_token(session_data.dict(), SEC_SECRET_SESSION)}
+
+
+@pytest.fixture
+def login():
+    return Login(login='user_login', password='pretty_password')
+
+
+@pytest.fixture
+def permission():
+    return Permission(name='perm_name', expiration_min=10)
