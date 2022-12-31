@@ -37,6 +37,11 @@ def permissions():
 
 
 @pytest.fixture
+def permission():
+    return Permission(id=9, name='p9', service_id=8, expiration_min=12)
+
+
+@pytest.fixture
 def login_sessions():
     return [
         LoginSession(
