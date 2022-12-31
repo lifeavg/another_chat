@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from api_fixture import HOST, authorization, login, session
+from api_fixture import HOST, login, session
 from db_response_fixture import login_sessions, user
 from httpx import AsyncClient
 from pytest_mock import mocker

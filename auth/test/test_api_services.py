@@ -1,6 +1,6 @@
 import pytest
-from api_fixture import HOST, authorization, login, permission, session
-from db_response_fixture import login_sessions, permissions, service, user
+from api_fixture import HOST, authorization, permission
+from db_response_fixture import permissions, service
 from httpx import AsyncClient
 from pytest_mock import mocker
 
