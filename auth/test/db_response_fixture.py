@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from auth.db.models import LoginSession, Permission, Service, User
+from auth.db.models import (AccessSession, LoginSession, Permission, Service,
+                            User)
 
 
 @pytest.fixture
@@ -51,6 +52,31 @@ def login_sessions():
             stopped=False),
         LoginSession(
             id=2, user_id=1,
+            start=datetime.now(timezone.utc) - timedelta(minutes=5),
+            end=datetime.now(timezone.utc) + timedelta(minutes=10),
+            stopped=False)
+    ]
+
+
+@pytest.fixture
+def login_session():
+    return LoginSession(id=1, user_id=1,
+                        start=datetime.now(timezone.utc) -
+                        timedelta(minutes=5),
+                        end=datetime.now(timezone.utc) + timedelta(minutes=10),
+                        stopped=False)
+
+
+@pytest.fixture
+def access_sessions():
+    return [
+        AccessSession(
+            id=1, login_session_id=1,
+            start=datetime.now(timezone.utc) - timedelta(minutes=5),
+            end=datetime.now(timezone.utc) + timedelta(minutes=10),
+            stopped=False),
+        AccessSession(
+            id=2, login_session_id=1,
             start=datetime.now(timezone.utc) - timedelta(minutes=5),
             end=datetime.now(timezone.utc) + timedelta(minutes=10),
             stopped=False)
