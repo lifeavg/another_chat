@@ -14,6 +14,7 @@ from auth.api.schemas import AccessAttemptResult, LoginAttemptResult
 from auth.db.models import (AccessAttempt, AccessSession, LoginAttempt,
                             LoginSession, Permission, Service, User)
 from auth.security import password_hash
+from auth.settings import settings
 
 TEARDOWN: bool = True
 
@@ -30,13 +31,10 @@ def event_loop():
 
 @pytest.fixture(scope='session')
 def engine():
-    DB_CONNECTION = 'postgresql+asyncpg'
-    DB_USER = 'postgres'
-    DB_PASSWORD = 'mysecretpassword'
-    DB_HOST = 'localhost:5432'
-    DB_NAME = 'test'
     return create_async_engine(
-        f'{DB_CONNECTION}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}',
+        (f'postgresql+asyncpg://{settings.sql.user_}:'
+        f'{settings.sql.password}@{settings.sql.host}'
+        f'/{settings.sql.name}'),
         echo=True)
 
 

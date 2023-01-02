@@ -5,8 +5,8 @@ from httpx import AsyncClient
 from pytest_mock import mocker
 
 import auth
-from auth.api.routers.app import app
 from auth.api.schemas import AccessAttemptResult
+from auth.main import app
 
 BASE_URL: str = HOST + '/access_sessions'
 

@@ -5,6 +5,7 @@ import auth.api.schemas as sh
 import auth.db.connection as con
 import auth.db.models as md
 import auth.security as sec
+from auth.settings import settings
 
 access_sessions_router = fs.APIRouter(
     prefix='/access_sessions', tags=['access_sessions'])
@@ -35,12 +36,17 @@ async def get_access_session(
                          sh.AccessAttemptResult.SUCCESS)
     await db_session.commit()
     return sh.Token(
-        token=sec.create_token(sh.AccessTokenData(
-            jti=access_session.id,  # type: ignore
-            sub=token.sub,
-            pms=permissions,
-            exp=expire_at).dict(),
-            secret=bytes((await b.service_by_id(db_session, list(requested_permissions)[0].service_id)).key, encoding='utf-8')),  # type: ignore
+        token=sec.create_token(
+            sh.AccessTokenData(
+                jti=access_session.id,  # type: ignore
+                sub=token.sub,
+                pms=permissions,
+                exp=expire_at).dict(),
+            bytes((await b.service_by_id(
+                db_session,
+                list(requested_permissions)[0].service_id)).key,    # type: ignore
+                encoding='utf-8'),
+            settings.security.algorithm),
         type=sh.TokenType.ACCESS)
 
 

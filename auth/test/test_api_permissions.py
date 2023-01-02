@@ -5,8 +5,8 @@ from db_response_fixture import permissions
 from httpx import AsyncClient
 from pytest_mock import mocker
 
-from auth.api.routers.app import app
 from auth.api.schemas import Permission
+from auth.main import app
 
 BASE_URL: str = HOST + '/permissions'
 

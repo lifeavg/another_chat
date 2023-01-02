@@ -10,6 +10,7 @@ import auth.db.connection as con
 import auth.db.models as md
 import auth.db.query as dq
 import auth.security as sec
+from auth.settings import settings
 
 
 async def commit_if_not_exists(db_session: con.AsyncSession) -> None:
@@ -85,7 +86,9 @@ async def check_login_limit(
 ) -> None:
     limit_delay = await sec.login_limit(
         db_session,
-        request.client.host)  # type: ignore
+        request.client.host,  # type: ignore
+        settings.security.attempt_delay,
+        settings.security.max_attempt_count)
     if limit_delay:
         add_login_attempt(
             request, db_session,
@@ -118,7 +121,7 @@ def add_login_session(
     db_session: con.AsyncSession
 ) -> md.LoginSession:
     start = datetime.now(timezone.utc)
-    expires = start + timedelta(minutes=sec.SEC_SESSION_EXPIRE_MINUTES)
+    expires = start + timedelta(minutes=settings.security.session_expire)
     session = md.LoginSession(
         user_id=user.id, start=start, end=expires)  # type: ignore
     db_session.add(session)
@@ -141,10 +144,12 @@ def add_access_session(
 def create_session_token(session: md.LoginSession) -> sh.Token:
     return sh.Token(
         token=sec.create_token(
-            data=sh.SessionTokenData(
+            sh.SessionTokenData(
                 jti=session.id,  # type: ignore
                 sub=session.user_id,  # type: ignore
-                exp=session.end).dict()),  # type: ignore
+                exp=session.end).dict(), # type: ignore
+            settings.security.session_key,
+            settings.security.algorithm),
         type=sh.TokenType.SESSION)
 
 

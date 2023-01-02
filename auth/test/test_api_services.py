@@ -5,9 +5,9 @@ from httpx import AsyncClient
 from pytest_mock import mocker
 
 import auth
-from auth.api.routers.app import app
 from auth.api.routers.exception import IntegrityError
 from auth.api.schemas import Key, Permission, Service
+from auth.main import app
 
 BASE_URL: str = HOST + '/services'
 

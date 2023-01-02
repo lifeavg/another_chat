@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r env.txt
 
 COPY ./auth/ .
 
-CMD [ "uvicorn", "main:app", "--port", "8002" , "--log-level", "debug", "--host", "0.0.0.0"]     
+CMD [ "uvicorn", "auth.main:app", "--port", "8002" , "--log-level", "debug", "--host", "0.0.0.0"]     

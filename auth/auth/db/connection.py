@@ -1,15 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from auth.settings import settings
+
 DB_CONNECTION = 'postgresql+asyncpg'
-DB_USER = 'postgres'
-DB_PASSWORD = 'mysecretpassword'
-DB_HOST = 'localhost:5432'
-DB_NAME = 'test'
 
 
 engine = create_async_engine(
-    f'{DB_CONNECTION}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}',
+    (f'{DB_CONNECTION}://{settings.sql.user_}:'
+     f'{settings.sql.password}@{settings.sql.host}'
+     f'/{settings.sql.name}'),
     echo=True)
 
 

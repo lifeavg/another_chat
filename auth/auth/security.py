@@ -10,19 +10,14 @@ from pydantic.error_wrappers import ValidationError
 
 import auth.db.query as dq
 from auth.api.schemas import AccessTokenData, PermissionName, SessionTokenData
+from auth.settings import settings
 
 TOKEN_NAME = 'Bearer'
 
-SEC_SESSION_EXPIRE_MINUTES = 300
-SEC_ATTEMPT_DELAY_MINUTES = 10
-SEC_MAX_ATTEMPT_DELAY_COUNT = 5
 
-SEC_ALGORITHM = 'HS256'
-SEC_SECRET_SESSION = b'1234567890'
-SEC_SECRET_ACCESS = b'4321qwerty'
-
-
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+pwd_context = CryptContext(
+    schemes=settings.security.password_hash_schemas,
+    deprecated='auto')
 
 
 class UnknownTokenType(Exception):
@@ -49,8 +44,8 @@ def password_hash(password: str) -> str:
 
 def create_token(
     data: dict,
-    secret: bytes = SEC_SECRET_SESSION,
-    algorithm: str = SEC_ALGORITHM
+    secret: bytes,
+    algorithm: str
 ) -> str:
     return jwt.encode(data, secret, algorithm)
 
@@ -59,7 +54,7 @@ def verify_token(
     token: str,
     expected_type: type,
     secret: bytes,
-    algorithm: str = SEC_ALGORITHM
+    algorithm: str
 ) -> Any:
     options = {
         "verify_signature": True,
@@ -74,22 +69,23 @@ def verify_token(
 async def login_limit(
     session: dq.AsyncSession,
     fingerprint: str,
-    delay_minutes: int = SEC_ATTEMPT_DELAY_MINUTES,
-    max_attempts: int = SEC_MAX_ATTEMPT_DELAY_COUNT
+    delay_minutes: int,
+    max_attempts: int
 ) -> timedelta | None:
     attempts = await dq.login_attempt_by_fingerprint(
         session, fingerprint, delay_minutes)
     if len(attempts) >= max_attempts:
         return timedelta(minutes=delay_minutes) - \
-            (datetime.now(timezone.utc) - attempts[0].date_time)  # type: ignore
+            (datetime.now(timezone.utc) -
+             attempts[0].date_time)  # type: ignore
 
 
 def get_key(token_type: type) -> bytes:
     match token_type.__name__:
         case SessionTokenData.__name__:
-            return SEC_SECRET_SESSION
+            return settings.security.session_key
         case AccessTokenData.__name__:
-            return SEC_SECRET_ACCESS
+            return settings.security.access_key
         case _:
             raise UnknownTokenType()
 
@@ -119,7 +115,8 @@ class TokenAuth(HTTPBearer):
         if credentials:
             try:
                 token = verify_token(
-                    credentials.credentials, self.token_type, self.key)
+                    credentials.credentials, self.token_type, self.key,
+                    settings.security.algorithm)
                 if token.exp < datetime.now(timezone.utc):
                     raise AuthError('time')
                 if (isinstance(token, AccessTokenData)

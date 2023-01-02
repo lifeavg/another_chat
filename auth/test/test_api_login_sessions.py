@@ -4,7 +4,7 @@ from db_response_fixture import access_sessions, login_session
 from httpx import AsyncClient
 from pytest_mock import mocker
 
-from auth.api.routers.app import app
+from auth.main import app
 
 BASE_URL: str = HOST + '/login_sessions'
 

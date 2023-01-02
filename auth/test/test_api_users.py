@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from pytest_mock import mocker
 
 import auth
-from auth.api.routers.app import app
+from auth.main import app
 from auth.security import verify_password
 
 BASE_URL: str = HOST + '/users'

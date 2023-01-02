@@ -6,8 +6,9 @@ from pytest_mock import mocker
 from auth.api.schemas import SessionTokenData
 from auth.db.models import LoginAttempt
 from auth.db.query import AsyncSession
-from auth.security import (SEC_SECRET_SESSION, create_token, login_limit,
-                           password_hash, verify_password, verify_token)
+from auth.security import (create_token, login_limit, password_hash,
+                           verify_password, verify_token)
+from auth.settings import settings
 
 
 def test_password_hash():
@@ -19,8 +20,12 @@ def test_token():
     token = SessionTokenData(
         jti=1, sub=1,
         exp=datetime.now(timezone.utc).replace(microsecond=0))
-    verified_token = verify_token(create_token(
-        token.dict()), SessionTokenData, SEC_SECRET_SESSION)
+    verified_token = verify_token(
+        create_token(
+            token.dict(), settings.security.session_key,
+            settings.security.algorithm),
+        SessionTokenData,
+        settings.security.session_key, settings.security.algorithm)
     assert token == verified_token
 
 
