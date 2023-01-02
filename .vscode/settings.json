@@ -5,6 +5,7 @@
         "backref",
         "coro",
         "fastapi",
+        "httpx",
         "keepalive",
         "ondelete",
         "passlib",
