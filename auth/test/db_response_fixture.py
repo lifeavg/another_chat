@@ -24,7 +24,7 @@ def user_with_permissions():
                 permissions=[
                     Permission(id=5, name='p1', service_id=2,
                                expiration_min=10),
-                    Permission(id=6, name='p2', service_id=3,
+                    Permission(id=6, name='p2', service_id=2,
                                expiration_min=10)
                 ])
     # user.permissions.append = append.__get__(user.permissions)
@@ -81,6 +81,15 @@ def access_sessions():
             end=datetime.now(timezone.utc) + timedelta(minutes=10),
             stopped=False)
     ]
+
+
+@pytest.fixture
+def access_session():
+    return AccessSession(
+        id=1, login_session_id=1,
+        start=datetime.now(timezone.utc) - timedelta(minutes=5),
+        end=datetime.now(timezone.utc) + timedelta(minutes=10),
+        stopped=False)
 
 
 @pytest.fixture

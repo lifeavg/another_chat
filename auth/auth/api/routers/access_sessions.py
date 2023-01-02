@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import fastapi as fs
 
 import auth.api.base as b
@@ -32,12 +30,9 @@ async def get_access_session(
         requested_permissions, token)
     await b.check_requested_services(requested_permissions,
                                      request, db_session, token)
-    access_session = md.AccessSession(
-        login_session_id=token.jti,
-        start=datetime.now(timezone.utc),
-        end=expire_at)
-    db_session.add(access_session)
-    b.add_access_attempt(request, db_session, token)
+    access_session = b.add_access_session(token, expire_at, db_session)
+    b.add_access_attempt(request, db_session, token,
+                         sh.AccessAttemptResult.SUCCESS)
     await db_session.commit()
     return sh.Token(
         token=sec.create_token(sh.AccessTokenData(

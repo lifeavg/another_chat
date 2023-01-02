@@ -70,7 +70,7 @@ def add_access_attempt(
     request: fa.Request,
     db_session: con.AsyncSession,
     token: sh.SessionTokenData,
-    result: sh.AccessAttemptResult = sh.AccessAttemptResult.SUCCESS
+    result: sh.AccessAttemptResult
 ) -> None:
     db_session.add(md.AccessAttempt(
         login_session_id=token.jti,
@@ -123,6 +123,19 @@ def add_login_session(
         user_id=user.id, start=start, end=expires)  # type: ignore
     db_session.add(session)
     return session
+
+
+def add_access_session(
+    token: sh.SessionTokenData,
+    expire_at: datetime,
+    db_session: con.AsyncSession
+) -> md.AccessSession:
+    access_session = md.AccessSession(
+        login_session_id=token.jti,
+        start=datetime.now(timezone.utc),
+        end=expire_at)
+    db_session.add(access_session)
+    return access_session
 
 
 def create_session_token(session: md.LoginSession) -> sh.Token:
