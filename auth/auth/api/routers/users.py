@@ -51,8 +51,9 @@ async def add_user_permissions(
     user, permissions_db = task_result
     new_permissions = set(permissions_db) - set(user.permissions) # type: ignore
     if new_permissions:
-        user.permissions.append(*new_permissions)  # type: ignore
-        await db_session.commit()
+        for permission in new_permissions:
+            user.permissions.append(permission)  # type: ignore
+    await db_session.commit()
 
 
 @users_router.post('/{id}/permissions/remove', response_class=fs.Response)
@@ -72,8 +73,9 @@ async def remove_user_permissions(
     user, permissions_db = task_result
     existing_permissions = set(permissions_db).intersection(user.permissions)
     if existing_permissions:
-        user.permissions.remove(*existing_permissions)
-        await db_session.commit()
+        for permission in existing_permissions:
+            user.permissions.remove(permission)
+    await db_session.commit()
 
 
 @users_router.get('/{id}/login_sessions', response_model=list[sh.LoginSession])
