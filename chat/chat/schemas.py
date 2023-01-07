@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum
+from datetime import datetime
+from enum import Enum, auto, StrEnum
 from typing import Protocol
 from uuid import UUID
 
-from pydantic.dataclasses import dataclass
-
+from pydantic import BaseModel, Field
 from utils import str_to_type, type_key
 
 
@@ -16,6 +16,18 @@ class HasUUID(Protocol):
     uuid: UUID
 
 
+# from auth
+PermissionName = str
+
+
+# from auth
+class AccessTokenData(BaseModel):
+    jti: int = Field(ge=0, default=0)
+    sub: int = Field(ge=0, default=0)
+    pms: list[PermissionName]
+    exp: datetime
+
+
 class UserStatus(Enum):
     """
     fot future away, typing...
@@ -24,40 +36,37 @@ class UserStatus(Enum):
     ONLINE = 'ONLINE'
 
 
-@dataclass
-class User:
+class User(BaseModel):
     """
     simple user model to determinate message sender in chat
     """
-    uuid: UUID
+    id: int
     name: str
 
     def __hash__(self) -> int:
-        return hash(self.__class__.__name__ + str(self.uuid))
+        return hash(self.__class__.__name__ + str(self.id))
 
     def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, Chat):
+        if not isinstance(__o, User):
             raise TypeError(
                 f'Object of type {__o.__class__.__name__} can\'t be compared to Chat object')
-        return self.uuid == __o.uuid
+        return self.id == __o.id
 
 
-@dataclass
-class UserInfo:
+class UserInfo(BaseModel):
     """
     extended user model
     """
     pass
 
 
-@dataclass
-class Chat:
+class Chat(BaseModel):
     """
     chat information model
     """
     uuid: UUID
     name: str
-    owner: UUID  # User uuid
+    owner: int  # User id
 
     def __hash__(self) -> int:
         return hash(self.__class__.__name__ + str(self.uuid) + self.name)
@@ -90,8 +99,7 @@ subscriber updates message status
 """
 
 
-@dataclass
-class Message:
+class Message(BaseModel):
     receiver: UUID  # Chat uuid
     status: MessageStatus
     sender: User
@@ -99,31 +107,21 @@ class Message:
     uuid: UUID
 
 
-@dataclass
-class NewMessage:
+class NewMessage(BaseModel):
     receiver: UUID  # Chat uuid
     text: str
 
 
-@dataclass
-class UpdateMessage:
+class UpdateMessage(BaseModel):
     status: MessageStatus
     uuid: UUID
 
 
-@dataclass
-class CachedMessage:
+class CachedMessage(BaseModel):
     receiver: UUID  # Chat uuid
     status: MessageStatus
     sender: User
     uuid: UUID
-
-
-class AccessLevel(Enum):
-    RESTRICTED = 'RESTRICTED'
-    READER = 'READER'
-    POSTER = 'POSTER'
-    MODERATOR = 'MODERATOR'
 
 # on login get user access permissions
 # auth service add to cache as permission:user_uuid:resource_class_name:resource_uuid = level with expiration time
@@ -133,15 +131,13 @@ class AccessLevel(Enum):
 # to revoke access auth service deletes key
 
 
-@dataclass
-class AccessRequest:
+class AccessRequest(BaseModel):
     resource: UUID
-    level: AccessLevel
+    level: RoleLevel
     # user: UUID | None = None
 
 
-@dataclass
-class Permission:
+class Permission(BaseModel):
     user_uuid: UUID
     resource_type: type
     resource_uuid: UUID
@@ -167,7 +163,6 @@ class Permission:
         return f'{type_key(Permission)}:update:{user}'
 
 
-# @dataclass
 # class AccessLevel:
 #     resource: UUID
 #     user: UUID
@@ -178,3 +173,25 @@ class Permission:
 #     USER = 'USER'
 #     ADMIN = 'ADMIN'
 #     MODERATOR = 'MODERATOR'
+
+class RoleLevel(StrEnum):
+    UNSET = auto()
+    BANNED = auto()
+    READER = auto()
+    WRITER = auto()
+    MODERATOR = auto()
+    ADMIN = auto()
+
+class Role(BaseModel):
+    resource: HasUUID
+    user: int
+    level: RoleLevel
+    
+    @property
+    def redis_key(self):
+        return f'{self.key_prefix}:{self.user}:{self.resource.uuid}'
+    
+    @property
+    @classmethod
+    def key_prefix(cls):
+        return cls.__name__
