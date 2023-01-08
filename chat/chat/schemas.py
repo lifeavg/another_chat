@@ -1,19 +1,39 @@
-from __future__ import annotations
-
 from datetime import datetime
-from enum import Enum, auto, StrEnum
-from typing import Protocol
-from uuid import UUID
+from enum import StrEnum, auto
+from typing import Any, Protocol, runtime_checkable
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
-from utils import str_to_type, type_key
 
 
-class HasUUID(Protocol):
-    """
-    to create redis key as classname:uuid
-    """
-    uuid: UUID
+@runtime_checkable
+class _IIntID(Protocol):
+    @property
+    def id(self) -> int:  # type: ignore
+        pass
+
+
+@runtime_checkable
+class _IStrID(Protocol):
+    @property
+    def id(self) -> str:  # type: ignore
+        pass
+
+
+@runtime_checkable
+class _IUuidId(Protocol):
+    @property
+    def id(self) -> UUID:  # type: ignore
+        pass
+
+
+IResource = _IIntID | _IStrID | _IUuidId
+ResourceId = UUID | str | int
+
+
+class ResourceMeta(BaseModel):
+    type: type
+    id: ResourceId = 0
 
 
 # from auth
@@ -28,151 +48,15 @@ class AccessTokenData(BaseModel):
     exp: datetime
 
 
-class UserStatus(Enum):
-    """
-    fot future away, typing...
-    """
-    OFFLINE = 'OFFLINE'
-    ONLINE = 'ONLINE'
+_cmp_RoleLevel = (
+    'unset',
+    'banned',
+    'reader',
+    'writer',
+    'moderator',
+    'admin'
+)
 
-
-class User(BaseModel):
-    """
-    simple user model to determinate message sender in chat
-    """
-    id: int
-    name: str
-
-    def __hash__(self) -> int:
-        return hash(self.__class__.__name__ + str(self.id))
-
-    def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, User):
-            raise TypeError(
-                f'Object of type {__o.__class__.__name__} can\'t be compared to Chat object')
-        return self.id == __o.id
-
-
-class UserInfo(BaseModel):
-    """
-    extended user model
-    """
-    pass
-
-
-class Chat(BaseModel):
-    """
-    chat information model
-    """
-    uuid: UUID
-    name: str
-    owner: int  # User id
-
-    def __hash__(self) -> int:
-        return hash(self.__class__.__name__ + str(self.uuid) + self.name)
-
-    def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, Chat):
-            raise TypeError(
-                f'Object of type {__o.__class__.__name__} can\'t be compared to Chat object')
-        return self.uuid == __o.uuid and self.name == __o.name
-
-
-class MessageStatus(Enum):
-    SENT = 'SENT'
-    DELIVERED = 'DELIVERED'
-    READ = 'READ'
-
-
-"""
-User sends message with receiver, status=SENT, text not Null, uuid and sender are Null (set by BE app)
-check if user is allowed to send messages to the receiver Chat
-BE set message uuid and sender
-publish to receiver Chat channel
-save with key message:uuid = receiver
-reader receives the message
-reader responses with status=DELIVERED, uuid other = Null
-be gets message from redis
-BE checks that the reader it allowed to read the chat
-be publish message
-subscriber updates message status
-"""
-
-
-class Message(BaseModel):
-    receiver: UUID  # Chat uuid
-    status: MessageStatus
-    sender: User
-    text: str
-    uuid: UUID
-
-
-class NewMessage(BaseModel):
-    receiver: UUID  # Chat uuid
-    text: str
-
-
-class UpdateMessage(BaseModel):
-    status: MessageStatus
-    uuid: UUID
-
-
-class CachedMessage(BaseModel):
-    receiver: UUID  # Chat uuid
-    status: MessageStatus
-    sender: User
-    uuid: UUID
-
-# on login get user access permissions
-# auth service add to cache as permission:user_uuid:resource_class_name:resource_uuid = level with expiration time
-# when user needs additional resource. user makes access request
-# auth service adds new key to redis with expiration time
-# on logout delete all keys
-# to revoke access auth service deletes key
-
-
-class AccessRequest(BaseModel):
-    resource: UUID
-    level: RoleLevel
-    # user: UUID | None = None
-
-
-class Permission(BaseModel):
-    user_uuid: UUID
-    resource_type: type
-    resource_uuid: UUID
-
-    @property
-    def key(self) -> str:
-        return (f'{type_key(self.__class__)}:{self.user_uuid}'
-                f':{self.resource_type}:{self.resource_uuid}')
-
-    @property
-    def resource_key(self) -> str:
-        return f':{self.resource_type}:{self.resource_uuid}'
-
-    @staticmethod
-    def from_str(permission: str) -> Permission:
-        keys = permission.split(':')
-        return Permission(user_uuid=UUID(keys[1]),
-                          resource_type=str_to_type(keys[2]),
-                          resource_uuid=UUID(keys[3]))
-
-    @staticmethod
-    def update_channel(user: UUID) -> str:
-        return f'{type_key(Permission)}:update:{user}'
-
-
-# class AccessLevel:
-#     resource: UUID
-#     user: UUID
-#     role: UserRole
-
-# class UserType(Enum):
-#     UNKNOWN = 'UNKNOWN'
-#     USER = 'USER'
-#     ADMIN = 'ADMIN'
-#     MODERATOR = 'MODERATOR'
 
 class RoleLevel(StrEnum):
     UNSET = auto()
@@ -182,16 +66,128 @@ class RoleLevel(StrEnum):
     MODERATOR = auto()
     ADMIN = auto()
 
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, RoleLevel):
+            print(_cmp_RoleLevel.index(self.value),
+                  _cmp_RoleLevel.index(other.value))
+            return _cmp_RoleLevel.index(self.value) < _cmp_RoleLevel.index(other.value)
+        raise TypeError
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, RoleLevel):
+            print(_cmp_RoleLevel.index(self.value),
+                  _cmp_RoleLevel.index(other.value))
+            return _cmp_RoleLevel.index(self.value) <= _cmp_RoleLevel.index(other.value)
+        raise TypeError
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, RoleLevel):
+            print(_cmp_RoleLevel.index(self.value),
+                  _cmp_RoleLevel.index(other.value))
+            return _cmp_RoleLevel.index(self.value) > _cmp_RoleLevel.index(other.value)
+        raise TypeError
+
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, RoleLevel):
+            print(_cmp_RoleLevel.index(self.value),
+                  _cmp_RoleLevel.index(other.value))
+            return _cmp_RoleLevel.index(self.value) >= _cmp_RoleLevel.index(other.value)
+        raise TypeError
+
+
 class Role(BaseModel):
-    resource: HasUUID
-    user: int
-    level: RoleLevel
-    
+    resource_meta: ResourceMeta
+    user_id: int = 0
+    level: RoleLevel = RoleLevel.BANNED
+
+    class Config:
+        arbitrary_types_allowed = True
+
     @property
     def redis_key(self):
-        return f'{self.key_prefix}:{self.user}:{self.resource.uuid}'
-    
-    @property
+        return f'{self.key_prefix}:{self.user_id}:{self.resource_meta.type}:{self.resource_meta.id}'
+
     @classmethod
+    @property
     def key_prefix(cls):
         return cls.__name__
+
+
+class User(BaseModel):
+    id: int = 0
+    name: str = ''
+
+    def __hash__(self) -> int:
+        return hash(self.__class__.__name__ + str(self.id))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, User):
+            raise TypeError(
+                f'Object of type {other.__class__.__name__} can\'t be compared to Chat object')
+        return self.id == other.id
+
+    @property
+    def redis_key(self):
+        return f'{self.key_prefix}:{self.id}'
+
+    @classmethod
+    @property
+    def key_prefix(cls):
+        return cls.__name__
+
+
+class UserStatus(StrEnum):
+    OFFLINE = auto()
+    ONLINE = auto()
+
+
+class Chat(BaseModel):
+    id: int = 0
+    name: str = ''
+    owners: tuple[int, ...] = Field(default_factory=tuple)
+
+    def __hash__(self) -> int:
+        return hash(self.__class__.__name__ + str(self.id) + self.name)
+
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, Chat):
+            raise TypeError(
+                f'Object of type {__o.__class__.__name__} can\'t be compared to Chat object')
+        return self.id == __o.id and self.name == __o.name
+
+
+class Message(BaseModel):
+    receiver: int = 0
+    sender: int = 0
+    text: str = ''
+    id: UUID = Field(default_factory=uuid4)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+    @property
+    def redis_key(self):
+        return f'{self.key_prefix}:{self.id}'
+
+    @classmethod
+    @property
+    def key_prefix(cls):
+        return cls.__name__
+
+
+class Command(StrEnum):
+    CREATE = auto()
+    READ = auto()
+    UPDATE = auto()
+    DELETE = auto()
+
+
+class Request(BaseModel):
+    command: Command
+    resource: IResource | None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    id: str = ''
+
+
+class Notification(BaseModel):
+    resource: list[IResource] = Field(default_factory=list)
+    result: bool = False
+    id: str = ''

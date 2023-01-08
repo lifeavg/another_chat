@@ -3,11 +3,11 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from chat.schemas import AccessTokenData, ResourceMeta, IResource, Role, RoleLevel, User, Chat
 from jose import jwt
 from jose.exceptions import JWTError
 from pydantic.error_wrappers import ValidationError
 from redis.asyncio.client import Redis
-from schemas import AccessTokenData, Chat, HasUUID, Role, RoleLevel, User
 from starlette.authentication import (AuthCredentials, AuthenticationBackend,
                                       AuthenticationError, BaseUser)
 from starlette.datastructures import Headers
@@ -45,7 +45,7 @@ class AuthUser(BaseUser):
     ) -> None:
         super().__init__()
         self._identity: AccessTokenData = auth_data
-        self._user = user
+        self.chat_user = user
 
     @property
     def is_authenticated(self) -> bool:
@@ -53,11 +53,11 @@ class AuthUser(BaseUser):
 
     @property
     def display_name(self) -> str:
-        return self._user.name
+        return self.chat_user.name
 
     @property
     def id(self) -> int:
-        return self._user.id
+        return self.chat_user.id
 
     @property
     def identity(self) -> AccessTokenData:
@@ -95,8 +95,8 @@ class AuthenticationManager(AuthenticationBackend):
         token_data = self._decrypt_token_data(
             self._get_token(self._get_credentials(connection.headers)))
         self._validate_token_data(token_data)
-        user = User(id=1, name='test_user')  # TODO: get user
-        return (AuthCredentials(['authenticated'].append(*token_data.pms)),
+        user = User(id=token_data.sub, name='test_user')  # TODO: get user
+        return (AuthCredentials(['authenticated'] + token_data.pms),
                 AuthUser(token_data, user))
 
 
@@ -107,8 +107,8 @@ class RoleManager:
         self.user: User = user
 
     async def reload_cache(self) -> tuple[Role, ...]:
-        roles = (Role(resource=Chat(uuid=uuid4(), name='chat1', owner=10), user=self.user.id, level=RoleLevel.MODERATOR),  # TODO: load roles
-                 Role(resource=Chat(uuid=uuid4(), name='chat2', owner=10), user=self.user.id, level=RoleLevel.MODERATOR))
+        roles = (Role(resource_meta=ResourceMeta(type=Chat, id=100), user_id=self.user.id, level=RoleLevel.MODERATOR),  # TODO: load roles
+                 Role(resource_meta=ResourceMeta(type=Chat, id=101), user_id=self.user.id, level=RoleLevel.MODERATOR))
         await self.clear_cache()
         async with self.redis.pipeline() as pipe:
             for role in roles:
@@ -122,12 +122,12 @@ class RoleManager:
             return await self.redis.delete(*keys)
         return 0
 
-    async def role(self, resource: HasUUID) -> RoleLevel:
-        role = await self.redis.get(f'{Role.key_prefix}:{self.user.id}:{resource.uuid}')
+    async def role(self, resource: IResource) -> RoleLevel:
+        role = await self.redis.get(f'{Role.key_prefix}:{self.user.id}:{resource.id}')
         if role is None:
             return RoleLevel.UNSET
         return RoleLevel[role.upper()]
 
-    async def update(self, resource: HasUUID, role: RoleLevel) -> RoleLevel:
+    async def update(self, resource: IResource, role: RoleLevel) -> RoleLevel:
         # TODO: implement
         return role
